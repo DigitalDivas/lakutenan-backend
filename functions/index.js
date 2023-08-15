@@ -20,6 +20,10 @@ const app = express()
 const PORT = 4000
 const admin = require("firebase-admin");
 const { query } = require("express");
+
+const tenantRoute = require('./routes/tenant');
+
+
 app.use(bodyParser.urlencoded({extended:false}));
 app.use(bodyParser.json());
 const corsOptions = {
@@ -37,6 +41,7 @@ app.use(session({
   cookie: { secure: false } // Set to true in production for HTTPS
 }));
 
+app.use('/tenant', tenantRoute);
 // SIGN UP TENANT
 app.post("/tenant/register",  cors(corsOptions), async (req, res) => {
   const { email, password } = req.body;
@@ -177,27 +182,6 @@ app.post("/login", cors(corsOptions), async (req, res) => {
   }
 });
 
-// CONTOH GET API FOR TENANT ONLY
-app.get("/tenant-only", async (req, res) => {
-  try {
-    const user = req.session.user;
-
-    if (user) {
-      const userRole = user.role 
-      // User is authenticated
-      if (userRole === "tenant") {
-        res.status(200).json({ message: "Welcome, tenant!" });
-      } else {
-        res.status(403).json({ error: "Unauthorized" });
-      }
-    } else {
-      res.status(401).send('Unauthorized');
-    }
-    
-  } catch (error) {
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
 
 // LOGOUT ALL USER
 app.post('/logout', cors(corsOptions), (req, res) => {
