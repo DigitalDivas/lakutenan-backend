@@ -27,6 +27,8 @@ const corsOptions = {
     credentials: true,
     optionSuccessStatus:200
 }
+app.use(cors(corsOptions));
+
 // Configure session middleware
 app.use(session({
   secret: 'your-secret-key',
