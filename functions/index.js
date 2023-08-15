@@ -92,7 +92,7 @@ app.post("/tenant/register",  cors(corsOptions), async (req, res) => {
 app.post("/event/register",  cors(corsOptions), async (req, res) => {
   const { email, password } = req.body;
   const customClaims = {
-    role: "event" // Assign the desired role
+    role: "organizer" // Assign the desired role
   };
 
   let createdUser;
