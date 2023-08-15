@@ -9,11 +9,11 @@
 
 const {onRequest} = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
-
 const bcrypt = require('bcrypt');
 const User = require("./config");
 const functions = require('firebase-functions')
 const express = require('express')
+const session = require('express-session');
 const cors = require('cors')
 const bodyParser = require('body-parser')
 const app = express()
@@ -27,6 +27,14 @@ const corsOptions = {
     credentials: true,
     optionSuccessStatus:200
 }
+// Configure session middleware
+app.use(session({
+  secret: 'your-secret-key',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: false } // Set to true in production for HTTPS
+}));
+
 // SIGN UP TENANT
 app.post("/tenant/register",  cors(corsOptions), async (req, res) => {
   const { email, password } = req.body;
@@ -148,7 +156,8 @@ app.post("/login", cors(corsOptions), async (req, res) => {
               console.log(err)
               return res.status(401).json({ error: "An error occured" });
             } else if (result === true) {
-              res.status(200).json({ message: "Successfully logged in" });
+              req.session.user = userData;
+              res.json({ message: 'Login successful' });
             } else {
               return res.status(401).json({ error: "Incorrect email or password" });
             }
@@ -166,28 +175,40 @@ app.post("/login", cors(corsOptions), async (req, res) => {
   }
 });
 
-// INI BELUM BISA
+// CONTOH GET API FOR TENANT ONLY
 app.get("/tenant-only", async (req, res) => {
-  const user = admin.auth().get
-
-  if (!user) {
-    return res.status(401).json({ error: "User not authenticated" });
-  }
-
   try {
-    // const userDoc = User.get()
-    // const userDoc = await firestore.collection("User").doc(user.uid).get();
-    const userDoc = User.doc(user.uid).get();
-    const userRole = userDoc.data().role;
+    const user = req.session.user;
 
-    if (userRole === "tenant") {
-      res.status(200).json({ message: "Welcome, tenant!" });
+    if (user) {
+      const userRole = user.role 
+      // User is authenticated
+      if (userRole === "tenant") {
+        res.status(200).json({ message: "Welcome, tenant!" });
+      } else {
+        res.status(403).json({ error: "Unauthorized" });
+      }
     } else {
-      res.status(403).json({ error: "Unauthorized" });
+      res.status(401).send('Unauthorized');
     }
+    
   } catch (error) {
     res.status(500).json({ error: "Internal server error" });
   }
+});
+
+// LOGOUT ALL USER
+app.post('/logout', cors(corsOptions), (req, res) => {
+  // Clear the session and associated user data
+  try{
+    req.session.destroy();
+    res.json({ message: 'Logged out successfully' });
+    console.log("you have logged out")
+  }
+  catch (error) {
+    res.status(500).json({ error: "Unable to log out" });
+  }
+  
 });
 
 
