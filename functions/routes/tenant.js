@@ -10,22 +10,6 @@ const corsOptions = {
 }
 router.use(cors(corsOptions));
 
-async function checkTenantFirstTime(userRef) {
-
-  Tenant.where('user', '==', userRef).get()
-  .then(querySnapshot => {
-      if (querySnapshot.empty) {
-      return true;
-      } 
-      else {
-      return false;
-      }
-  })
-  .catch(error => {
-      console.error('Error getting Organizer:', error);
-  });
-}
-
 // Session middleware setupH GET API FOR TENANT ONLY
 router.get("/tenant-only", async (req, res) => {
     try {
@@ -61,49 +45,55 @@ router.post("/profile/create",  cors(corsOptions), async (req, res) => {
         const userRef = User.doc(user.docId)
         // User is authenticated
         if (userRole === "tenant") {
-          if (!checkTenantFirstTime(userRef)){
-              const customErrorCode = 400401
-              res.status(404).json({
-                  errorCode: customErrorCode,
-                  message: "You have a profile already"
-                });
-          }
-          else {
-              var { nama, lokasi, tag, kontak, link, deskripsi } = req.body;
-              if (nama && lokasi && tag && link && deskripsi )    {
-                  const validTag = ['makanan & minuman', 'pakaian', 'jasa', 'souvenir', 'kosmetik'];
-                  if (!validTag.includes(tag.toLowerCase())) {
-                    return res.status(400).json({
-                      error: 'Invalid status value provided.'
+          Tenant.where('user', '==', userRef).get()
+            .then(async querySnapshot => {
+                if (querySnapshot.empty) {
+                  var { nama, lokasi, tag, kontak, link, deskripsi } = req.body;
+                  if (nama && lokasi && tag && link && deskripsi )    {
+                      const validTag = ['makanan & minuman', 'pakaian', 'jasa', 'souvenir', 'kosmetik'];
+                      if (!validTag.includes(tag.toLowerCase())) {
+                        return res.status(400).json({
+                          error: 'Invalid status value provided.'
+                        });
+                      }
+                      else  {
+                        tag = tag.toLowerCase();
+                        var tenantData = {
+                          nama: nama,
+                          lokasi: lokasi,
+                          tag: tag,
+                          kontak: kontak, 
+                          link: link,
+                          deskripsi: deskripsi,
+                          countFollowings: 0,
+                          followings : [],
+                          user: userRef
+                      }
+                      await Tenant.add( tenantData ).then(async () =>{
+                          console.log("Tenant data stored in Firestore.");
+                          res.status(201).json("Your data has been successfully saved");  
+                      }).catch((e) => {
+                          console.error("Error creating profile:", error);
+                          res.status(500).json({ error: error.message }); 
+                      })
+                      }
+                      
+                  }
+                  else {
+                      res.status(500).send("Input must not be empty")
+                  }
+                } 
+                else  {
+                  const customErrorCode = 400401
+                  res.status(404).json({
+                      errorCode: customErrorCode,
+                      message: "You have a profile already"
                     });
-                  }
-                  else  {
-                    tag = tag.toLowerCase();
-                    var tenantData = {
-                      nama: nama,
-                      lokasi: lokasi,
-                      tag: tag,
-                      kontak: kontak, 
-                      link: link,
-                      deskripsi: deskripsi,
-                      countFollowings: 0,
-                      followings : [],
-                      user: userRef
-                  }
-                  await Tenant.add( tenantData ).then(async () =>{
-                      console.log("Tenant data stored in Firestore.");
-                      res.status(201).json("Your data has been successfully saved");  
-                  }).catch((e) => {
-                      console.error("Error creating profile:", error);
-                      res.status(500).json({ error: error.message }); 
-                  })
-                  }
-                  
-              }
-              else {
-                  res.status(500).send("Input must not be empty")
-              }
-          }
+                }
+            })
+            .catch(error => {
+                console.error('Error getting Organizer:', error);
+            });
         } else {
           res.status(403).json({ error: "Unauthorized. This page is for Event Organizer users" });
         }
