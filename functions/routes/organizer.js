@@ -229,7 +229,7 @@ router.post('/add-booth/:eventId', cors(corsOptions), async(req, res)=>{
                 nama: nama,
                 ukuran: ukuran,
                 kapasitas_total: kapasitas_total,
-                jumlah_terdaftar : 0,
+                terdaftar : [],
                 harga: harga,
                 fasilitas: fasilitas,
                 event: eventReference

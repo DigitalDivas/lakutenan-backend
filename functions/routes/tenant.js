@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const {User, Tenant} = require("../config");
-const cors = require('cors')
+const {User, Tenant, Booths, Booth_Tenant} = require("../config");
+const cors = require('cors');
 // Define route handlers
 const corsOptions = {
     origin: '*',
@@ -115,6 +115,56 @@ router.post("/profile/create",  cors(corsOptions), async (req, res) => {
       console.log(error)
     }
 });
+
+// BLOM BISA
+router.post('/mangkal', cors(corsOptions), async(req, res) =>{
+  const { nama, boothId } = req.body;
+  const userRef = User.doc(req.session.user.docId);
+
+  try {
+    if(nama && boothId && userRef){
+      var boothRef = Booths.doc(boothId);
+      var tenantRef;
+      Tenant.where('user', '==', userRef).get()
+      .then(querySnapshot =>{
+        if (querySnapshot.empty){
+          res.status(400).json("empty")
+        } else{
+          res.status(200).json(querySnapshot)
+        }
+      })
+    
+      
+      // // get current data
+      // boothRef.get().then(docSnapshot =>{
+      //     if (docSnapshot.exists) {
+      //       // console.log(docSnapshot.data());
+      //       terdaftar = docSnapshot.data().terdaftar;
+      //       // console.log(terdaftarSaatIni);
+      //       terdaftar.push(userRef);
+      //       // console.log(terdaftarSaatIni);
+      //       // res.status(200).json(terdaftarSaatIni);
+      //     } else {
+      //       return res.status(401).json({ error: "No booth found with the specified id" });
+      //     }
+      // })
+
+      
+      Booth_Tenant.add({
+        booth: boothRef,
+        tenant: tenantRef,
+        paid: false
+      })
+      res.status(200).json(tenantPath);
+    } else {
+      res.status(401).send('Unauthorized');
+    }
+
+  } catch (error) {
+    res.status(500).json({ error: `${error}` });
+    console.log(error)
+  }
+})
 
 // Export the router
 module.exports = router;
