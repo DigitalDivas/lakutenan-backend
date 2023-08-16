@@ -15,19 +15,17 @@ const corsOptions = {
 }
 const bucket = admin.storage().bucket(); // Firebase Cloud Storage bucket
 
-function checkOrganizerFirstTime(userRef) {
-
+async function checkOrganizerFirstTime(userRef) {
     Organizer.where('user', '==', userRef).get()
     .then(querySnapshot => {
         if (querySnapshot.empty) {
-        return true;
+            return true;
         } 
-        else {
-        return false;
-        }
+        else return false;
     })
     .catch(error => {
         console.error('Error getting Organizer:', error);
+        return res.status(401).send("Error");
     });
 }
 
@@ -130,6 +128,7 @@ router.post("/profile/create",  cors(corsOptions), upload.single('fotoKtp'), asy
           // User is authenticated
           if (userRole === "organizer") {
             if (!checkOrganizerFirstTime(userRef)){
+                console.log(checkOrganizerFirstTime(userRef))
                 const customErrorCode = 400401
                 res.status(404).json({
                     errorCode: customErrorCode,

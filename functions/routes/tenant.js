@@ -10,7 +10,7 @@ const corsOptions = {
 }
 router.use(cors(corsOptions));
 
-function checkTenantFirstTime(userRef) {
+async function checkTenantFirstTime(userRef) {
 
   Tenant.where('user', '==', userRef).get()
   .then(querySnapshot => {
