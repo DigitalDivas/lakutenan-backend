@@ -121,5 +121,30 @@ router.post("/profile/create",  cors(corsOptions), upload.single('fotoKtp'), asy
       }
   });
 
+// post event utk organizer
+router.post('/post', cors(corsOptions), async(req, res) =>{
+    const { datetime , instagram , judul , kategori , link , lokasi , organizer , panduan } = req.body
+    
+    try {
+        if( datetime && instagram && judul && kategori && link && lokasi && organizer && panduan){
+            const eventData = {
+                datetime: datetime,
+                instagram: instagram,
+                judul: judul,
+                kategori: kategori,
+                link: link,
+                lokasi: lokasi,
+                organizer: organizer,
+                panduan: panduan
+            }
+            Events.add({eventData})
+            res.status(200).json({ message : "User created successfully"})
+        } else{
+            res.status(401).json({ error: "data not found"})
+        }
+    } catch (error) {
+        res.status(500).json({ error: "Internal server error" });
+    }
+})
 
 module.exports = router;
