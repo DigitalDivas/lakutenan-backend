@@ -52,10 +52,12 @@ router.get('/tenant/:category', async (req, res) => {
             else {
                 const array = [];
                 querySnapshot.forEach(doc => {
-                    console.log(doc.data());
-                    array.push(doc.data())
+                    // console.log(doc.data());
+                    // console.log(doc.data());
+                    // console.log(doc.data().userID);
+                    array.push(doc.data());
                 })
-                return res.status(200).json(array)
+                return res.status(200).json(array);
             }
         })
         .catch(error => {
