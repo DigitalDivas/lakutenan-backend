@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 // Define the Events collection reference
-const {User, Events, Organizer} = require('../config');
+const {User, Events, Organizer, Booths} = require('../config');
 const cors = require('cors')
 const multer = require('multer');
 const storage = multer.memoryStorage();
@@ -29,34 +29,7 @@ async function checkOrganizerFirstTime(userRef) {
     });
 }
 
-// api to get the details of a particular event pake id
-// router.get('/event/:eventId', async (req, res) => {
-//     const eventId = req.params.eventId;
-//     try {
-//         Events.where('id', '==', parseInt(eventId)).get()
-//         .then(querySnapshot => {
-//             console.log(querySnapshot);
-//             if (querySnapshot.empty) {
-//                 return res.status(401).json({ error: "No event found with the specified id" });
-//             } 
-//             else {
-//                 querySnapshot.forEach(doc => {
-//                     console.log(doc.data());
-//                     return res.status(200).json(doc.data())
-
-//                 })
-//             }
-//         })
-//         .catch(error => {
-//             console.error('Error getting documents:', error);
-//         });
-//     } catch (error) {
-//         console.error("Error:", error);
-//         res.status(401).send("Error");
-//     }
-// });
-
-// api to get the details of a particular event pake doc id
+// api to get the details of a particular event using doc id
 router.get('/event/:eventId', async (req, res) => {
     const eventId = req.params.eventId;
     try {
@@ -83,11 +56,11 @@ router.get('/event/:eventId', async (req, res) => {
 router.put('/edit-event/:eventId', async (req, res) => {
     const eventId = req.params.eventId;
     const user = req.session.user;
-    const userId = req.session.user.docId;
     const newData = req.body;
     console.log(eventId);
 
     if (user) {
+        const userId = "/Users/" + req.session.user.docId;
         try {
             const eventDetailsSnapshot = await Events.doc(eventId).get();
 
@@ -95,7 +68,10 @@ router.put('/edit-event/:eventId', async (req, res) => {
                 return res.status(401).json({ error: "No event found with the specified id" });
             } 
             
-            const organizerId = eventDetailsSnapshot.data().organizer.id;
+            const organizerId = eventDetailsSnapshot.data().organizer;
+            console.log(organizerId);
+            console.log(userId);
+
 
             if (organizerId === userId) {
                 console.log("boleh edit");
@@ -111,6 +87,50 @@ router.put('/edit-event/:eventId', async (req, res) => {
         }
     } else {
         return res.status(401).json({ error: "Log In to update event details" });
+    }
+});
+
+// api to edit the booth capacity
+router.put('/edit-booth/:boothId', async (req, res) => {
+    const boothId = req.params.boothId;
+    console.log(boothId);
+    const user = req.session.user;
+    const newData = req.body;
+
+    if (user) {
+        const userId = "/Users/" + req.session.user.docId;
+        console.log("user id: " + userId);
+        try {
+            const boothDetailsSnapshot = await Booths.doc(boothId).get();
+            if (!boothDetailsSnapshot.exists) {
+                return res.status(401).json({ error: "No booth found with the specified id" });
+            } 
+            const eventId = boothDetailsSnapshot.data().event.id;
+            console.log("event id: " + eventId);
+
+            const eventDetailsSnapshot = await Events.doc(eventId).get();
+            if (!eventDetailsSnapshot.exists) {
+                return res.status(401).json({ error: "No event found with the specified id" });
+            } 
+            
+            const organizerId = eventDetailsSnapshot.data().organizer;
+            console.log("organizer id: " + organizerId);
+
+
+            if (organizerId === userId) {
+                console.log("boleh edit");
+                await Booths.doc(boothId).update(newData);
+
+                return res.json({ message: "Booth capacity updated successfully" });
+            } else {
+                return res.status(401).json({ error: "Only the organizer has permission to update booth capacity" });
+            }    
+        } catch (error) {
+            console.error('Error updating booth capacity:', error);
+            return res.status(500).json({ error: "An error occurred while updating booth capacity" });
+        }
+    } else {
+        return res.status(401).json({ error: "Log In to update booth capacity" });
     }
 });
 

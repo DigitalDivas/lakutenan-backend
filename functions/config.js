@@ -11,4 +11,5 @@ const User = db.collection("Users");
 const Events = db.collection("Events");
 const Organizer = db.collection("Organizer");
 const Tenant = db.collection("Tenant");
-module.exports = {db, User, Events, Organizer, Tenant};
+const Booths = db.collection("Booths");
+module.exports = {db, User, Events, Organizer, Tenant, Booths};
