@@ -31,46 +31,91 @@ function checkOrganizerFirstTime(userRef) {
     });
 }
 
+// api to get the details of a particular event pake id
+// router.get('/event/:eventId', async (req, res) => {
+//     const eventId = req.params.eventId;
+//     try {
+//         Events.where('id', '==', parseInt(eventId)).get()
+//         .then(querySnapshot => {
+//             console.log(querySnapshot);
+//             if (querySnapshot.empty) {
+//                 return res.status(401).json({ error: "No event found with the specified id" });
+//             } 
+//             else {
+//                 querySnapshot.forEach(doc => {
+//                     console.log(doc.data());
+//                     return res.status(200).json(doc.data())
+
+//                 })
+//             }
+//         })
+//         .catch(error => {
+//             console.error('Error getting documents:', error);
+//         });
+//     } catch (error) {
+//         console.error("Error:", error);
+//         res.status(401).send("Error");
+//     }
+// });
+
+// api to get the details of a particular event pake doc id
 router.get('/event/:eventId', async (req, res) => {
     const eventId = req.params.eventId;
     try {
-        Events.where('id', '==', parseInt(eventId)).get()
-        .then(querySnapshot => {
-            console.log(querySnapshot);
-            if (querySnapshot.empty) {
+        const docRef = Events.doc(eventId);
+        docRef.get()
+        .then((docSnapshot) => {
+            if (docSnapshot.exists) {
+                console.log(docSnapshot.data());
+                return res.status(200).json(docSnapshot.data());
+            } else {
                 return res.status(401).json({ error: "No event found with the specified id" });
-            } 
-            else {
-                querySnapshot.forEach(doc => {
-                    // const judul = doc.data().judul;
-                    // const lokasi = doc.data().lokasi;
-                    // const datetime = doc.data().datetime.toDate();
-                    // const panduan = doc.data().panduan;
-                    // const organizer = doc.data().organizer;
-                    // const link = doc.data().link;
-                    // const instagram = doc.data().instagram;
-
-                    // console.log("Judul: " + judul);
-                    // console.log("Lokasi: " + lokasi);
-                    // console.log("Datetime: " + datetime);
-                    // console.log("Panduan: " + panduan);
-                    // console.log("Organizer: " + organizer);
-                    // console.log("Link: " + link);
-                    // console.log("Instagram: " + instagram);
-                    console.log(doc.data());
-                    return res.status(200).json(doc.data())
-
-                })
             }
         })
-        .catch(error => {
-            console.error('Error getting documents:', error);
+        .catch((error) => {
+            console.error('Error retrieving document:', error);
         });
     } catch (error) {
         console.error("Error:", error);
         res.status(401).send("Error");
     }
 });
+
+// api to edit the details of a particular event
+router.put('/edit-event/:eventId', async (req, res) => {
+    const eventId = req.params.eventId;
+    const user = req.session.user;
+    const userId = req.session.user.docId;
+    const newData = req.body;
+    console.log(eventId);
+
+    if (user) {
+        try {
+            const eventDetailsSnapshot = await Events.doc(eventId).get();
+
+            if (!eventDetailsSnapshot.exists) {
+                return res.status(401).json({ error: "No event found with the specified id" });
+            } 
+            
+            const organizerId = eventDetailsSnapshot.data().organizer.id;
+
+            if (organizerId === userId) {
+                console.log("boleh edit");
+                await Events.doc(eventId).update(newData);
+
+                return res.json({ message: "Event details updated successfully" });
+            } else {
+                return res.status(401).json({ error: "Only the organizer has permission to update event details" });
+            }    
+        } catch (error) {
+            console.error('Error updating event details:', error);
+            return res.status(500).json({ error: "An error occurred while updating event details" });
+        }
+    } else {
+        return res.status(401).json({ error: "Log In to update event details" });
+    }
+});
+
 
 /* Post profile pertama kali ke database Organizer
 *  di post if and only if user nya selesai isi profile fieldsnya
@@ -146,5 +191,30 @@ router.post("/profile/create",  cors(corsOptions), upload.single('fotoKtp'), asy
       }
   });
 
+// post event utk organizer
+router.post('/post', cors(corsOptions), async(req, res) =>{
+    const { datetime , instagram , judul , kategori , link , lokasi , organizer , panduan } = req.body
+    
+    try {
+        if( datetime && instagram && judul && kategori && link && lokasi && organizer && panduan){
+            const eventData = {
+                datetime: datetime,
+                instagram: instagram,
+                judul: judul,
+                kategori: kategori,
+                link: link,
+                lokasi: lokasi,
+                organizer: organizer,
+                panduan: panduan
+            }
+            Events.add({eventData})
+            res.status(200).json({ message : "User created successfully"})
+        } else{
+            res.status(401).json({ error: "data not found"})
+        }
+    } catch (error) {
+        res.status(500).json({ error: "Internal server error" });
+    }
+})
 
 module.exports = router;
