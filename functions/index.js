@@ -21,8 +21,7 @@ const PORT = 4000
 const admin = require("firebase-admin");
 const { query } = require("express");
 
-const tenantRoute = require('./routes/tenant');
-const organizerRoute = require('./routes/organizer');
+
 
 
 app.use(bodyParser.urlencoded({extended:false}));
@@ -42,8 +41,6 @@ app.use(session({
   cookie: { secure: false } // Set to true in production for HTTPS
 }));
 
-app.use('/tenant', tenantRoute);
-app.use('/organizer', organizerRoute);
 
 // SIGN UP TENANT
 app.post("/tenant/register",  cors(corsOptions), async (req, res) => {
@@ -97,7 +94,7 @@ app.post("/tenant/register",  cors(corsOptions), async (req, res) => {
 
 
 // SIGN UP EVENT
-app.post("/event/register",  cors(corsOptions), async (req, res) => {
+app.post("/organizer/register",  cors(corsOptions), async (req, res) => {
   const { email, password } = req.body;
   const customClaims = {
     role: "organizer" // Assign the desired role
@@ -115,7 +112,6 @@ app.post("/event/register",  cors(corsOptions), async (req, res) => {
   .then((userRecord) => {
     // User created successfully
     createdUser = userRecord;
-
     // Assign custom claims to the user to define their role
     return admin.auth().setCustomUserClaims(userRecord.uid, customClaims);
   })
@@ -158,7 +154,7 @@ app.post("/login", cors(corsOptions), async (req, res) => {
       } 
       else {
         querySnapshot.forEach(doc => {
-          const userData = doc.data().userData; // Extract the entire user data
+          const userData = {...(doc.data().userData), "docId" : doc.id}; // Extract the entire user data
           console.log('Document ID:', doc.id, ' => Document data:', userData);
           const hashPassword = userData.hashPassword;
           bcrypt.compare(password, hashPassword, (err, result) => {
@@ -204,5 +200,11 @@ app.post('/logout', cors(corsOptions), (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}.`);
 });
+module.exports = admin;
 
+
+const tenantRoute = require('./routes/tenant');
+const organizerRoute = require('./routes/organizer');
+app.use('/tenant', tenantRoute);
+app.use('/organizer', organizerRoute);
 exports.app = functions.https.onRequest(app);
