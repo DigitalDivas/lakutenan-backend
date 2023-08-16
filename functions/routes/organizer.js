@@ -7,6 +7,7 @@ const multer = require('multer');
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 const admin = require('../index');
+const { event } = require('firebase-functions/v1/analytics');
 // Define route handlers
 const corsOptions = {
     origin: '*',
@@ -227,7 +228,7 @@ router.post('/post', cors(corsOptions), async(req, res) =>{
                 panduan: panduan
             }
             Events.add({eventData})
-            res.status(200).json({ message : "User created successfully"})
+            res.status(200).json({ message : "Event created successfully"})
         } else{
             res.status(401).json({ error: "data not found"})
         }
@@ -236,4 +237,30 @@ router.post('/post', cors(corsOptions), async(req, res) =>{
     }
 })
 
+// post booth untuk organizer
+router.post('/add-booth/:eventId', cors(corsOptions), async(req, res)=>{
+    const eventId = req.params.eventId
+    const {nama, ukuran, kapasitas_total, harga, fasilitas} = req.body
+
+    try {
+        if (eventId && nama && ukuran && harga){
+            let eventReference = Events.doc(eventId)
+            const boothData = {
+                nama: nama,
+                ukuran: ukuran,
+                kapasitas_total: kapasitas_total,
+                jumlah_terdaftar : 0,
+                harga: harga,
+                fasilitas: fasilitas,
+                event: eventReference
+            }
+            Booths.add(boothData);
+            res.status(200).json({ message : "Booth created successfully"})
+        } else{
+            res.status(401).json({ error: "data not found"})
+        }
+    } catch (error) {
+        res.status(500).json({ error: `${error}` }); 
+    }
+})
 module.exports = router;
