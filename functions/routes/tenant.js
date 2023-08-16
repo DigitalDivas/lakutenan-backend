@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const {User, Tenant} = require("../config");
-const cors = require('cors')
+const {User, Tenant, Booths, Booth_Tenant} = require("../config");
+const cors = require('cors');
 // Define route handlers
 const corsOptions = {
     origin: '*',
@@ -106,6 +106,64 @@ router.post("/profile/create",  cors(corsOptions), async (req, res) => {
       console.log(error)
     }
 });
+
+// tenant daftar booth
+router.post('/mangkal', cors(corsOptions), async(req, res) =>{
+  const { boothId } = req.body;
+  const userRef = User.doc(req.session.user.docId);
+
+  try {
+    if(boothId && userRef){
+      var boothRef = Booths.doc(boothId);
+      var tenantRef;
+      // console.log(userRef)
+      // console.log(req.session.user.docId)
+      
+      Tenant.where('user', '==', userRef).get()
+      .then(querySnapshot =>{
+        if (querySnapshot.empty){
+          res.status(400).json("empty")
+        } 
+        else{
+          querySnapshot.forEach(doc => {
+            tenantRef = Tenant.doc(doc.id)
+            // console.log(tenantRef)
+          })
+
+          Booth_Tenant.add({
+            booth: boothRef,
+            tenant: tenantRef,
+            paid: false
+          })
+
+          res.status(200).json({message : "successfully enrolled"});
+        }
+      })
+    
+      
+      // // get current data
+      // boothRef.get().then(docSnapshot =>{
+      //     if (docSnapshot.exists) {
+      //       // console.log(docSnapshot.data());
+      //       terdaftar = docSnapshot.data().terdaftar;
+      //       // console.log(terdaftarSaatIni);
+      //       terdaftar.push(userRef);
+      //       // console.log(terdaftarSaatIni);
+      //       // res.status(200).json(terdaftarSaatIni);
+      //     } else {
+      //       return res.status(401).json({ error: "No booth found with the specified id" });
+      //     }
+      // })
+
+    } else {
+      res.status(401).send('Unauthorized');
+    }
+
+  } catch (error) {
+    res.status(500).json({ error: `${error}` });
+    console.log(error)
+  }
+})
 
 // Export the router
 module.exports = router;

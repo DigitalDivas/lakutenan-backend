@@ -242,7 +242,7 @@ router.post('/add-booth/:eventId', cors(corsOptions), async(req, res)=>{
                 nama: nama,
                 ukuran: ukuran,
                 kapasitas_total: kapasitas_total,
-                jumlah_terdaftar : 0,
+                terdaftar : [],
                 harga: harga,
                 fasilitas: fasilitas,
                 event: eventReference
@@ -251,6 +251,37 @@ router.post('/add-booth/:eventId', cors(corsOptions), async(req, res)=>{
             res.status(200).json({ message : "Booth created successfully"})
         } else{
             res.status(401).json({ error: "data not found"})
+        }
+    } catch (error) {
+        res.status(500).json({ error: `${error}` }); 
+    }
+})
+
+router.get('/get-booth/:eventId', cors(corsOptions), async(req, res) =>{
+    const eventId = req.params.eventId
+    try {
+        if (eventId){
+            // Create a reference to the specific document you want to search with
+            var eventRef = Events.doc(eventId);
+            Booths.where("event", "==", eventRef).get()
+            .then(querySnapshot => {
+                // console.log(querySnapshot);
+                if (querySnapshot.empty) {
+                    return res.status(401).json({ error: "No booths available" });
+                } 
+                else {
+                    const array = [];
+                    querySnapshot.forEach(doc => {
+                        array.push(doc.data());
+                    })
+                    return res.status(200).json(array);
+                }
+            })
+            .catch(error => {
+                res.status(404).json({ error: `${error}`})
+            });
+        } else{
+            res.status(404).json({ error: "parameter not found"})
         }
     } catch (error) {
         res.status(500).json({ error: `${error}` }); 
