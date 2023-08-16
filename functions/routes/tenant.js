@@ -69,7 +69,7 @@ router.post("/profile/create",  cors(corsOptions), async (req, res) => {
                 });
           }
           else {
-              var { nama, lokasi, tag, link, deskripsi } = req.body;
+              var { nama, lokasi, tag, kontak, link, deskripsi } = req.body;
               if (nama && lokasi && tag && link && deskripsi )    {
                   const validTag = ['makanan & minuman', 'pakaian', 'jasa', 'souvenir', 'kosmetik'];
                   if (!validTag.includes(tag.toLowerCase())) {
@@ -83,6 +83,7 @@ router.post("/profile/create",  cors(corsOptions), async (req, res) => {
                       nama: nama,
                       lokasi: lokasi,
                       tag: tag,
+                      kontak: kontak, 
                       link: link,
                       deskripsi: deskripsi,
                       countFollowings: 0,
