@@ -116,21 +116,36 @@ router.post("/profile/create",  cors(corsOptions), async (req, res) => {
     }
 });
 
-// BLOM BISA
+// tenant daftar booth
 router.post('/mangkal', cors(corsOptions), async(req, res) =>{
-  const { nama, boothId } = req.body;
+  const { boothId } = req.body;
   const userRef = User.doc(req.session.user.docId);
 
   try {
-    if(nama && boothId && userRef){
+    if(boothId && userRef){
       var boothRef = Booths.doc(boothId);
       var tenantRef;
+      // console.log(userRef)
+      // console.log(req.session.user.docId)
+      
       Tenant.where('user', '==', userRef).get()
       .then(querySnapshot =>{
         if (querySnapshot.empty){
           res.status(400).json("empty")
-        } else{
-          res.status(200).json(querySnapshot)
+        } 
+        else{
+          querySnapshot.forEach(doc => {
+            tenantRef = Tenant.doc(doc.id)
+            // console.log(tenantRef)
+          })
+
+          Booth_Tenant.add({
+            booth: boothRef,
+            tenant: tenantRef,
+            paid: false
+          })
+
+          res.status(200).json({message : "successfully enrolled"});
         }
       })
     
@@ -149,13 +164,6 @@ router.post('/mangkal', cors(corsOptions), async(req, res) =>{
       //     }
       // })
 
-      
-      Booth_Tenant.add({
-        booth: boothRef,
-        tenant: tenantRef,
-        paid: false
-      })
-      res.status(200).json(tenantPath);
     } else {
       res.status(401).send('Unauthorized');
     }
