@@ -205,6 +205,8 @@ module.exports = admin;
 
 const tenantRoute = require('./routes/tenant');
 const organizerRoute = require('./routes/organizer');
+const exploreRoute = require('./routes/explore');
 app.use('/tenant', tenantRoute);
 app.use('/organizer', organizerRoute);
+app.use('/explore', exploreRoute);
 exports.app = functions.https.onRequest(app);
