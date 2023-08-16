@@ -7,4 +7,5 @@ admin.initializeApp({
 });
 const db = admin.firestore();
 const User = db.collection("Users");
-module.exports = User;
+const Events = db.collection("Events");
+module.exports = {User, Events};

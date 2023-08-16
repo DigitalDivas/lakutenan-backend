@@ -10,7 +10,7 @@
 const {onRequest} = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 const bcrypt = require('bcrypt');
-const User = require("./config");
+const {User, Events} = require('./config');
 const functions = require('firebase-functions')
 const express = require('express')
 const session = require('express-session');
@@ -22,6 +22,7 @@ const admin = require("firebase-admin");
 const { query } = require("express");
 
 const tenantRoute = require('./routes/tenant');
+const organizerRoute = require('./routes/organizer');
 
 
 app.use(bodyParser.urlencoded({extended:false}));
@@ -42,6 +43,8 @@ app.use(session({
 }));
 
 app.use('/tenant', tenantRoute);
+app.use('/organizer', organizerRoute);
+
 // SIGN UP TENANT
 app.post("/tenant/register",  cors(corsOptions), async (req, res) => {
   const { email, password } = req.body;
