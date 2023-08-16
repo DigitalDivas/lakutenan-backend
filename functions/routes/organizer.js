@@ -183,7 +183,7 @@ router.post('/post', cors(corsOptions), async(req, res) =>{
                 panduan: panduan
             }
             Events.add({eventData})
-            res.status(200).json({ message : "User created successfully"})
+            res.status(200).json({ message : "Event created successfully"})
         } else{
             res.status(401).json({ error: "data not found"})
         }
