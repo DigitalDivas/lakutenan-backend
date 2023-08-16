@@ -10,4 +10,5 @@ const db = admin.firestore();
 const User = db.collection("Users");
 const Events = db.collection("Events");
 const Organizer = db.collection("Organizer");
-module.exports = {User, Events, Organizer};
+const Tenant = db.collection("Tenant");
+module.exports = {User, Events, Organizer, Tenant};
