@@ -16,19 +16,6 @@ const corsOptions = {
 }
 const bucket = admin.storage().bucket(); // Firebase Cloud Storage bucket
 
-async function checkOrganizerFirstTime(userRef) {
-    Organizer.where('user', '==', userRef).get()
-    .then(querySnapshot => {
-        if (querySnapshot.empty) {
-            return true;
-        } 
-        else return false;
-    })
-    .catch(error => {
-        console.error('Error getting Organizer:', error);
-        return res.status(401).send("Error");
-    });
-}
 
 // api to get the details of a particular event using doc id
 router.get('/event/:eventId', async (req, res) => {
@@ -148,56 +135,62 @@ router.post("/profile/create",  cors(corsOptions), upload.single('fotoKtp'), asy
           const userRef = User.doc(user.docId)
           // User is authenticated
           if (userRole === "organizer") {
-            if (!checkOrganizerFirstTime(userRef)){
-                console.log(checkOrganizerFirstTime(userRef))
-                const customErrorCode = 400401
-                res.status(404).json({
-                    errorCode: customErrorCode,
-                    message: "You have a profile already"
-                  });
-            }
-            else {
-                const { nama } = req.body;
-                var fotoKtp = req.file; 
-                if (nama && fotoKtp)    {
-                    var organizerData = {
-                        nama: nama,
-                        user: userRef,
-                        followerCount: 0,
-                        followers : []
-                    }
-                // Upload the image to Firebase Cloud Storage
-                const uniqueId = user.email + "KTP";// Replace with your method of generating a unique ID
-                const imageFileName = `${uniqueId}.jpg`; // Change the file extension as needed
-                const file = bucket.file(`organizer/ktp/${imageFileName}`);
-                await file.save(fotoKtp.buffer, {
-                    metadata: { contentType: 'image/jpeg' }, // Set the appropriate content type
-                }).then(async () => {
-                    console.log("successfully saved image");
-                    // Get the image URL
-                    const imageUrl = await file.getSignedUrl({ action: 'read', expires: '01-01-2030'}).catch((e) => {
-                        console.log(e);
-                        res.status(500).send("Cannot");
-                    });
-                    // console.log(imageUrl);
-                    fotoKtp = imageUrl;
-                    organizerData = {...organizerData, fotoKtp : fotoKtp}
-                    await Organizer.add( organizerData ).then(async () =>{
-                        console.log("Organizer data stored in Firestore.");
-                        res.status(201).json("Your data has been successfully saved");  
+            // var isOrganizerFirstTime = false;
+            Organizer.where('user', '==', userRef).get()
+                .then(async querySnapshot => {
+                    if (querySnapshot.empty) {
+                        const { nama } = req.body;
+                    var fotoKtp = req.file; 
+                    if (nama && fotoKtp)    {
+                        var organizerData = {
+                            nama: nama,
+                            user: userRef,
+                            followerCount: 0,
+                            followers : []
+                        }
+                    // Upload the image to Firebase Cloud Storage
+                    const uniqueId = user.email + "KTP";// Replace with your method of generating a unique ID
+                    const imageFileName = `${uniqueId}.jpg`; // Change the file extension as needed
+                    const file = bucket.file(`organizer/ktp/${imageFileName}`);
+                    await file.save(fotoKtp.buffer, {
+                        metadata: { contentType: 'image/jpeg' }, // Set the appropriate content type
+                    }).then(async () => {
+                        console.log("successfully saved image");
+                        // Get the image URL
+                        const imageUrl = await file.getSignedUrl({ action: 'read', expires: '01-01-2030'}).catch((e) => {
+                            console.log(e);
+                            res.status(500).send("Cannot");
+                        });
+                        fotoKtp = imageUrl;
+                        organizerData = {...organizerData, fotoKtp : fotoKtp}
+                        await Organizer.add( organizerData ).then(async () =>{
+                            console.log("Organizer data stored in Firestore.");
+                            res.status(201).json("Your data has been successfully saved");  
+                        }).catch((e) => {
+                            console.error("Error creating profile:", error);
+                            res.status(500).json({ error: error.message }); 
+                        })
                     }).catch((e) => {
-                        console.error("Error creating profile:", error);
-                        res.status(500).json({ error: error.message }); 
+                        console.log(e);
+                        res.status(500).send("Unable to save image")
+                    });
+                    }
+                    else {
+                        res.status(500).send("Input must not be empty")
+                    }
+                        } 
+                    else    {
+                        const customErrorCode = 400401;
+                        res.status(404).json({
+                            errorCode: customErrorCode,
+                            message: "You have a profile already"
+                        });
+                    }
                     })
-                }).catch((e) => {
-                    console.log(e);
-                    res.status(500).send("Unable to save image")
-                });
-                }
-                else {
-                    res.status(500).send("Input must not be empty")
-                }
-            }
+                    .catch(error => {
+                        console.error('Error getting Organizer:', error);
+                        return res.status(401).send("Error");
+                    });
           } else {
             res.status(403).json({ error: "Unauthorized. This page is for Event Organizer users" });
           }
