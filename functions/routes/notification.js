@@ -3,63 +3,128 @@ const router = express.Router();
 const {User, Tenant, Booths, Booth_Tenant, OrgNotif, TenantsNotif} = require("../config");
 const cors = require('cors');
 
+// get untuk organizer
+router.get('/o/follow', async(req, res) => {
+    const user = req.session.user;
+    if(!user)   {
+        return res.status(403).json("Unauthorized. Must be logged in")
+    }
+    try{
+        if (user.role != "organizer")   {
+            return res.status(403).json("Unauthorized. For organizers only")
+        }
+        OrgNotif.where('type', '==', "follow").get()
+            .then(querySnapshot =>{
+                if (querySnapshot.empty){
+                res.status(400).json("empty")
+                } 
+                else{
+                var result = [];
+                querySnapshot.forEach(doc => {
+                    result.push(doc.data())
+                });
+                res.json(result);
+                }
+                })
+    }
+    catch(e)    {
+        console.log(e)
+        return res.status(500).json("Internal server error")
+    }
+  })
 
-// router.post("", async (req, res) => {
-//     try {
-//         const validType = ['follow', 'invite', 'mangkal', 'accept', 'pay', 'paymenconfirmed'];
-//         const type = req.body.type.toLowerCase();
-//         if (type){
-//             if (!validType.includes(tag.toLowerCase())) {
-//                 return res.status(400).json({
-//                   error: 'Invalid notif type provided.'
-//                 });
-//               }
-//             else    {
-//                 switch (type) {
-//                     case 'follow':
-//                       // Perform database operation
-//                       // Send a JSON response
-//                       res.json({ message: 'This is case 1' });
-//                       break;
-//                     case 'invite':
-//                       // Call a function
-//                       // Set a custom response header
-//                       res.setHeader('X-Custom-Header', 'Hello');
-//                       // Send a status code and response
-//                       res.status(200).send('This is case 2');
-//                       break;
-//                     case 'mangkal':
-//                       // Render a view using a template engine (e.g., EJS, Pug)
-//                       res.render('case3', { value });
-//                       break;
-//                     case 'accept':
-//                     // Render a view using a template engine (e.g., EJS, Pug)
-//                     res.render('case3', { value });
-//                     break;
-//                     case 'pay':
-//                       // Render a view using a template engine (e.g., EJS, Pug)
-//                       res.render('case3', { value });
-//                       break;
-//                     case 'paymenconfirmed':
-//                     // Render a view using a template engine (e.g., EJS, Pug)
-//                     res.render('case3', { value });
-//                     break;
-//                     default:
-//                       // Send a default response
-//                       res.send('Unknown case');
-//                   }
-//             }
-//         }
-//         else{
-//             res.status(500).json({ error: "Internal server error" });
-//             console.log("Notification type must be specified") 
-//         }
-        
-//       } catch (error) {
-//         res.status(500).json({ error: "Internal server error" });
-//         console.log(error)
-//       }
-//   });
+
+
+  router.get('/o/mangkal', async(req, res) => {
+    const user = req.session.user;
+    if(!user)   {
+        return res.status(403).json("Unauthorized. Must be logged in")
+    }
+    try{
+        if (user.role != "organizer")   {
+            return res.status(403).json("Unauthorized. For organizers only")
+        }
+        OrgNotif.where('type', '==', "mangkal").get()
+            .then(querySnapshot =>{
+                if (querySnapshot.empty){
+                res.status(400).json("empty")
+                } 
+                else{
+                var result = [];
+                querySnapshot.forEach(doc => {
+                    result.push(doc.data())
+                });
+                res.json(result);
+                }
+                })
+    }
+    catch(e)    {
+        console.log(e)
+        return res.status(500).json("Internal server error")
+    }
+  })
+
+
+  // get untuk organizer
+  router.get('/t/accept', async(req, res) => {
+    const user = req.session.user;
+    if(!user)   {
+        return res.status(403).json("Unauthorized. Must be logged in")
+    }
+    try{
+        if (user.role != "tenant")   {
+            return res.status(403).json("Unauthorized. For organizers only")
+        }
+        TenantsNotif.where('type', '==', "accept").get()
+            .then(querySnapshot =>{
+                if (querySnapshot.empty){
+                res.status(400).json("empty")
+                } 
+                else{
+                var result = [];
+                querySnapshot.forEach(doc => {
+                    result.push(doc.data())
+                });
+                res.json(result);
+                }
+                })
+    }
+    catch(e)    {
+        console.log(e)
+        return res.status(500).json("Internal server error")
+    }
+  })
+
+  router.get('/t/invite', async(req, res) => {
+    const user = req.session.user;
+    if(!user)   {
+        return res.status(403).json("Unauthorized. Must be logged in")
+    }
+    try{
+        if (user.role != "tenant")   {
+            return res.status(403).json("Unauthorized. For organizers only")
+        }
+        TenantsNotif.where('type', '==', "invite").get()
+            .then(querySnapshot =>{
+                if (querySnapshot.empty){
+                res.status(400).json("empty")
+                } 
+                else{
+                var result = [];
+                querySnapshot.forEach(doc => {
+                    result.push(doc.data())
+                });
+                res.json(result);
+                }
+                })
+    }
+    catch(e)    {
+        console.log(e)
+        return res.status(500).json("Internal server error")
+    }
+  })
+
+  
 
 
   module.exports = router;
