@@ -140,6 +140,7 @@ router.post('/mangkal', cors(corsOptions), async(req, res) =>{
                                         await Booth_Tenant.add({
                                           booth: boothRef,
                                           tenant: tenantRef,
+                                          organizer:orgRef,
                                           paid: false, 
                                           accepted: false
                                         }).then(async (btRef) => {
@@ -359,6 +360,67 @@ router.put('/follow/:organizerId', async (req, res) => {
 //     }
 // });
 
+// tenant bayar booth
+router.post('/bayar/:boothTenantId', cors(corsOptions), async(req, res) =>{
+  const boothTenantId  = req.params.boothTenantId; // boothId dan event ini nanti disimpan di variable di sap
+  const userRef = User.doc(req.session.user.docId);
+  try {
+    if(boothTenantId && userRef){
+      var orgRef;
+      var boothTenantRef;
+      var namaTenant;
+      const btRef = Booth_Tenant.doc(boothTenantId)
+      const currentDatetime = new Date()
+      var tenantRef;
+      Tenant.where('user', '==', userRef).get()
+        .then(querySnapshot =>{
+          if (querySnapshot.empty){
+            return res.status(401).json("Unauthorized. You are not registered as tenant")
+          } 
+          else{
+            querySnapshot.forEach(async doc => {
+              namaTenant = doc.data().nama;
+              tenantRef = Tenant.doc(doc.id);
+              boothTenantRef = Booth_Tenant.doc(boothTenantId);
+              boothTenantRef.get()
+              .then(async (docSnapshot) => {
+                if (docSnapshot.empty){
+                  return res.status(400).json("Booth cannot be found")
+                } 
+                else  {
+                orgRef = docSnapshot.data().organizer;
+                const notifData = {
+                  type: "pay",
+                  foro: orgRef ,
+                  fromt: tenantRef, 
+                  namaTenant: namaTenant, 
+                  boothTenantRef: btRef, 
+                  time:currentDatetime
+                }
+                await OrgNotif.add(notifData).then(() => {
+                  console.log("Notif has been added.");
+                  return res.status(200).json( "Request has been successfully sent" ); 
+                }).catch((e) => {
+                  res.status(400).json({ error: "Error payment" });
+                  console.log(e)
+                })
+                }
+              }).catch((e) =>{
+                return res.status(400).json("Problem fetching booth")
+              })
+      })
+        }
+
+      })
+    } else {
+      res.status(500).send('Invalid input');
+    }
+
+  } catch (error) {
+    res.status(500).json({ error: `${error}` });
+    console.log(error)
+  }
+})
 
 // function to check followers
 function follower(tenantRef, listFollowers) {

@@ -206,24 +206,57 @@ router.post("/profile/create",  cors(corsOptions), upload.single('fotoKtp'), asy
 
 // post event utk organizer
 router.post('/post', cors(corsOptions), async(req, res) =>{
-    const { datetime , instagram , judul , kategori , link , lokasi , organizer , panduan } = req.body
+    const {instagram , judul , kategori , link , lokasi , panduan } = req.body
     
     try {
-        if( datetime && instagram && judul && kategori && link && lokasi && organizer && panduan){
-            const eventData = {
-                datetime: datetime,
-                instagram: instagram,
-                judul: judul,
-                kategori: kategori,
-                link: link,
-                lokasi: lokasi,
-                organizer: organizer,
-                panduan: panduan
+        
+        datetime = new Date();
+        const user = req.session.user;
+        if (!user)   {
+            return res.status(403).json({ error: "Unauthorized"});
+        }
+        else {
+            if( instagram && judul && kategori && link && lokasi && panduan)   { 
+                if (user.role = 'organizer' && user.docId)    {
+                        const userRef = User.doc(user.docId);
+                    Organizer.where('user', '==', userRef).get()
+                        .then(querySnapshot =>{
+                            if (querySnapshot.empty){
+                            return res.status(403).json("Not registered as Organizer")
+                            } 
+                            else{
+                            querySnapshot.forEach(doc => {
+                                const orgRef = Organizer.doc(doc.id);
+                                if (orgRef) {
+                                    const eventData = {
+                                        datetime: datetime,
+                                        instagram: instagram,
+                                        judul: judul,
+                                        kategori: kategori,
+                                        link: link,
+                                        lokasi: lokasi,
+                                        organizer: orgRef,
+                                        panduan: panduan
+                                    }
+                                    Events.add({eventData})
+                                    res.status(200).json({ message : "Event created successfully"})
+                                }
+                                else{
+                                    return res.status(400).json("organizer not found")  
+                                }
+                            })
+                            }
+                            })
+                } 
+                    else    {
+                        return res.status(401).json({ error: "Unauthorized. Organizer user only"});
+                    }
+            
             }
-            Events.add({eventData})
-            res.status(200).json({ message : "Event created successfully"})
-        } else{
-            res.status(401).json({ error: "data not found"})
+            else {
+                return res.status(401).json({ error: "data not found"})
+            }
+           
         }
     } catch (error) {
         res.status(500).json({ error: "Internal server error" });
