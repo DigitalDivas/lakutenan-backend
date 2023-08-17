@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const {User, Tenant, Booths, Booth_Tenant, OrgNotif, TenantsNotif} = require("../config");
-const cors = require('cors');
+const {User, Tenant, Booths, Booth_Tenant, OrgNotif, TenantsNotif} = require("../config.js");
 
 // get untuk organizer
 router.get('/o/follow', async(req, res) => {

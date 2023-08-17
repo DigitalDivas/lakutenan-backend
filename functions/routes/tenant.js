@@ -1,8 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const {User, Tenant, Booths, Booth_Tenant, Organizer, OrgNotif, TenantsNotif} = require("../config");
+const {User, Tenant, Booths, Booth_Tenant, Organizer, OrgNotif} = require("../config.js");
 const cors = require('cors');
-const admin = require('../index');
 // Define route handlers
 const corsOptions = {
     origin: '*',
@@ -96,7 +95,7 @@ router.post("/profile/create",  cors(corsOptions), async (req, res) => {
                 console.error('Error getting Organizer:', error);
             });
         } else {
-          res.status(403).json({ error: "Unauthorized. This page is for Event Organizer users" });
+          res.status(403).json({ error: "Unauthorized. This page is for Event Tenant users" });
         }
       } else {
         res.status(401).send('Unauthorized');
@@ -273,28 +272,57 @@ router.put('/follow/:organizerId', async (req, res) => {
       console.log("nyampe sini")
 
       // add tenant to ogranizer's followers 
-      const addToFollowers = admin.firestore().runTransaction(async t => {
-          const doc = await t.get(organizerRef);
-          const organizerData = doc.data();
+      const addToFollowers = organizerRef.get().then(async (docSnapshot) => {
+        if (docSnapshot.exists) {
+          const followers = docSnapshot.data().followers;
+          // const doc = await t.get(organizerRef);
+          // const organizerData = doc.data();
           
           // Append tenantRef to the existing followers array
-          const updatedFollowers = [...organizerData.followers, tenantRef];
+          const updatedFollowers = [...followers, tenantRef];
           
           // Update the followers field with the updated array
-          t.update(organizerRef, { followers: updatedFollowers });
-      });
+          await organizerRef.update({ followers: updatedFollowers });
+        } else {
+            return res.status(401).json({ error: "No organizer found with the specified id" });
+        }
+    })
+    // (async t => {
+    //       const doc = await t.get(organizerRef);
+    //       const organizerData = doc.data();
+          
+    //       // Append tenantRef to the existing followers array
+    //       const updatedFollowers = [...organizerData.followers, tenantRef];
+          
+    //       // Update the followers field with the updated array
+    //       t.update(organizerRef, { followers: updatedFollowers });
+    //   });
 
       // add organizer to tenant's following
-      const addToFollowing = admin.firestore().runTransaction(async t => {
-          const doc = await t.get(tenantRef);
-          const tenantData = doc.data();
+      const addToFollowing = tenantRef.get().then(async (docSnapshot) => {
+        if (docSnapshot.exists) {
+          const followings = docSnapshot.data().followings;
+          // const doc = await t.get(organizerRef);
+          // const organizerData = doc.data();
           
-          // Append organizerRef to the existing followers array
-          const updatedFollowing = [...tenantData.followings, organizerRef];
+          // Append tenantRef to the existing followers array
+          const updatedFollowings = [...followings, organizerRef];
+          
+          // Update the followers field with the updated array
+          await tenantRef.update({ followings: updatedFollowings });
+        }
+        else {
+          return res.status(401).json({ error: "No tenant found with the specified id" });
+      }
+          // const doc = await t.get(tenantRef);
+          // const tenantData = doc.data();
+          
+          // // Append organizerRef to the existing followers array
+          // const updatedFollowing = [...tenantData.followings, organizerRef];
           
 
-          // Update the followings field with the updated array
-          t.update(tenantRef, { followings: updatedFollowing });
+          // // Update the followings field with the updated array
+          // t.update(tenantRef, { followings: updatedFollowing });
       });
 
       // handle notification

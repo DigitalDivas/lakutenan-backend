@@ -1,11 +1,19 @@
 const admin = require("firebase-admin");
 const serviceAccount = require("./serviceAccountKey.json");
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  storageBucket: "gs://lakutenan-e6d4f.appspot.com/"
-  // Other options if needed
-});
+
+if (admin.apps.length === 0) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    storageBucket: "gs://lakutenan-e6d4f.appspot.com/"
+    // Other options if needed
+  });
+}
+// admin.initializeApp({
+//   credential: admin.credential.cert(serviceAccount),
+//   storageBucket: "gs://lakutenan-e6d4f.appspot.com/"
+//   // Other options if needed
+// });
 const db = admin.firestore();
 const User = db.collection("Users");
 const Events = db.collection("Events");
