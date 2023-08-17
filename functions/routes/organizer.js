@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 // Define the Events collection reference
-const {User, Events, Organizer, Booths} = require('../config');
+const {User, Events, Organizer, Booths, OrgNotif, TenantsNotif} = require('../config');
 const cors = require('cors')
 const multer = require('multer');
 const storage = multer.memoryStorage();

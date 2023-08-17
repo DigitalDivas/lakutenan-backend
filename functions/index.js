@@ -10,7 +10,7 @@
 const {onRequest} = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 const bcrypt = require('bcrypt');
-const {User, Events} = require('./config');
+const {User, Organizer, Tenant} = require('./config');
 const functions = require('firebase-functions')
 const express = require('express')
 const session = require('express-session');
@@ -148,22 +148,63 @@ app.post("/login", cors(corsOptions), async (req, res) => {
 
   try {
     User.where('userData.email', '==', email).get()
-    .then(querySnapshot => {
+    .then(async querySnapshot => {
       if (querySnapshot.empty) {
         return res.status(401).json({ error: "No user found with the specified email" });
       } 
       else {
+        var role;
         querySnapshot.forEach(doc => {
-          const userData = {...(doc.data().userData), "docId" : doc.id}; // Extract the entire user data
+          var userData = {...(doc.data().userData), "docId" : doc.id}; // Extract the entire user data
+          const userRef = User.doc(doc.id)
+          role = doc.data().userData.role;
           console.log('Document ID:', doc.id, ' => Document data:', userData);
           const hashPassword = userData.hashPassword;
-          bcrypt.compare(password, hashPassword, (err, result) => {
+          bcrypt.compare(password, hashPassword, async (err, result) => {
             if (err) {
               console.log(err)
               return res.status(401).json({ error: "An error occured" });
             } else if (result === true) {
-              req.session.user = userData;
-              res.json({ message: 'Login successful' });
+              if (role) {
+                if (role == 'tenant') {
+                  var roleId;
+                  await Tenant.where('user', '==', userRef).get()
+                    .then(async querySnapshot =>{
+                      if (querySnapshot.empty){
+                        res.status(400).json("empty")
+                      } 
+                      else{
+                        querySnapshot.forEach(doc => {
+                          roleId = doc.id;
+                          userData = {...userData, 'roleId' : roleId};
+                          req.session.user = userData;
+                          return res.json({ message: 'Login successful' });
+                        })
+                      }
+                    })
+                }
+                else {
+                  var roleId;
+                  Organizer.where('user', '==', userRef).get()
+                    .then(async querySnapshot =>{
+                      if (querySnapshot.empty){
+                        res.status(400).json("empty")
+                      } 
+                      else{
+                        querySnapshot.forEach(doc => {
+                          roleId = doc.id;
+                          userData = {...userData, 'roleId' : roleId};
+                          req.session.user = userData;
+                          return res.json({ message: 'Login successful' });
+                        })
+                      }
+                    })
+                }
+              }
+              else  {
+                return res.status(500).json({ error: "No role" });
+              }
+              
             } else {
               return res.status(401).json({ error: "Incorrect email or password" });
             }
@@ -206,7 +247,9 @@ module.exports = admin;
 const tenantRoute = require('./routes/tenant');
 const organizerRoute = require('./routes/organizer');
 const exploreRoute = require('./routes/explore');
+const notifRoute = require('./routes/notification');
 app.use('/tenant', tenantRoute);
 app.use('/organizer', organizerRoute);
 app.use('/explore', exploreRoute);
+app.use('/notif', notifRoute);
 exports.app = functions.https.onRequest(app);
