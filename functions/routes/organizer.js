@@ -41,86 +41,86 @@ router.get('/event/:eventId', async (req, res) => {
 });
 
 // api to edit the details of a particular event
-// router.put('/edit-event/:eventId', async (req, res) => {
-//     const eventId = req.params.eventId;
-//     const user = req.session.user;
-//     const newData = req.body;
-//     console.log(eventId);
+router.put('/edit-event/:eventId', async (req, res) => {
+    const eventId = req.params.eventId;
+    const user = req.session.user;
+    const newData = req.body;
+    console.log(eventId);
 
-//     if (user) {
-//         const userId = "/Users/" + req.session.user.docId;
-//         try {
-//             const eventDetailsSnapshot = await Events.doc(eventId).get();
+    if (user) {
+        const userId = "/Users/" + req.session.user.docId;
+        try {
+            const eventDetailsSnapshot = await Events.doc(eventId).get();
 
-//             if (!eventDetailsSnapshot.exists) {
-//                 return res.status(401).json({ error: "No event found with the specified id" });
-//             } 
+            if (!eventDetailsSnapshot.exists) {
+                return res.status(401).json({ error: "No event found with the specified id" });
+            } 
             
-//             const organizerId = eventDetailsSnapshot.data().organizer;
-//             console.log(organizerId);
-//             console.log(userId);
+            const organizerId = eventDetailsSnapshot.data().organizer;
+            console.log(organizerId);
+            console.log(userId);
 
 
-//             if (organizerId === userId) {
-//                 console.log("boleh edit");
-//                 await Events.doc(eventId).update(newData);
+            if (organizerId === userId) {
+                console.log("boleh edit");
+                await Events.doc(eventId).update(newData);
 
-//                 return res.json({ message: "Event details updated successfully" });
-//             } else {
-//                 return res.status(401).json({ error: "Only the organizer has permission to update event details" });
-//             }    
-//         } catch (error) {
-//             console.error('Error updating event details:', error);
-//             return res.status(500).json({ error: "An error occurred while updating event details" });
-//         }
-//     } else {
-//         return res.status(401).json({ error: "Log In to update event details" });
-//     }
-// });
+                return res.json({ message: "Event details updated successfully" });
+            } else {
+                return res.status(401).json({ error: "Only the organizer has permission to update event details" });
+            }    
+        } catch (error) {
+            console.error('Error updating event details:', error);
+            return res.status(500).json({ error: "An error occurred while updating event details" });
+        }
+    } else {
+        return res.status(401).json({ error: "Log In to update event details" });
+    }
+});
 
 // api to edit the booth capacity
-// router.put('/edit-booth/:boothId', async (req, res) => {
-//     const boothId = req.params.boothId;
-//     console.log(boothId);
-//     const user = req.session.user;
-//     const newData = req.body;
+router.put('/edit-booth/:boothId', async (req, res) => {
+    const boothId = req.params.boothId;
+    console.log(boothId);
+    const user = req.session.user;
+    const newData = req.body;
 
-//     if (user) {
-//         const userId = "/Users/" + req.session.user.docId;
-//         console.log("user id: " + userId);
-//         try {
-//             const boothDetailsSnapshot = await Booths.doc(boothId).get();
-//             if (!boothDetailsSnapshot.exists) {
-//                 return res.status(401).json({ error: "No booth found with the specified id" });
-//             } 
-//             const eventId = boothDetailsSnapshot.data().event.id;
-//             console.log("event id: " + eventId);
+    if (user) {
+        const userId = "/Users/" + req.session.user.docId;
+        console.log("user id: " + userId);
+        try {
+            const boothDetailsSnapshot = await Booths.doc(boothId).get();
+            if (!boothDetailsSnapshot.exists) {
+                return res.status(401).json({ error: "No booth found with the specified id" });
+            } 
+            const eventId = boothDetailsSnapshot.data().event.id;
+            console.log("event id: " + eventId);
 
-//             const eventDetailsSnapshot = await Events.doc(eventId).get();
-//             if (!eventDetailsSnapshot.exists) {
-//                 return res.status(401).json({ error: "No event found with the specified id" });
-//             } 
+            const eventDetailsSnapshot = await Events.doc(eventId).get();
+            if (!eventDetailsSnapshot.exists) {
+                return res.status(401).json({ error: "No event found with the specified id" });
+            } 
             
-//             const organizerId = eventDetailsSnapshot.data().organizer;
-//             console.log("organizer id: " + organizerId);
+            const organizerId = eventDetailsSnapshot.data().organizer;
+            console.log("organizer id: " + organizerId);
 
 
-//             if (organizerId === userId) {
-//                 console.log("boleh edit");
-//                 await Booths.doc(boothId).update(newData);
+            if (organizerId === userId) {
+                console.log("boleh edit");
+                await Booths.doc(boothId).update(newData);
 
-//                 return res.json({ message: "Booth capacity updated successfully" });
-//             } else {
-//                 return res.status(401).json({ error: "Only the organizer has permission to update booth capacity" });
-//             }    
-//         } catch (error) {
-//             console.error('Error updating booth capacity:', error);
-//             return res.status(500).json({ error: "An error occurred while updating booth capacity" });
-//         }
-//     } else {
-//         return res.status(401).json({ error: "Log In to update booth capacity" });
-//     }
-// });
+                return res.json({ message: "Booth capacity updated successfully" });
+            } else {
+                return res.status(401).json({ error: "Only the organizer has permission to update booth capacity" });
+            }    
+        } catch (error) {
+            console.error('Error updating booth capacity:', error);
+            return res.status(500).json({ error: "An error occurred while updating booth capacity" });
+        }
+    } else {
+        return res.status(401).json({ error: "Log In to update booth capacity" });
+    }
+});
 
 
 /* Post profile pertama kali ke database Organizer
@@ -240,12 +240,6 @@ router.post('/post', cors(corsOptions), async(req, res) =>{
                                         panduan: panduan
                                     }
                                      Events.add({eventData}).then((eventRef) => {
-                                        // const notifData = {
-                                        //     type: "invite",
-                                        //     fromo: userRef, 
-                                        //     eventRef: eventRef, 
-                                        //     time:datetime
-                                        // }
                                         followers.forEach((follower) => {
                                             const notifData = {
                                                 type: "invite",

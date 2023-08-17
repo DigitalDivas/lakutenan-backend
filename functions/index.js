@@ -180,6 +180,24 @@ app.post("/login", cors(corsOptions), async (req, res) => {
   }
 });
 
+app.get('/current-user', cors(corsOptions), (req, res) => {
+  // Clear the session and associated user data
+  try{
+    const user = req.session.user;
+    if (user) {
+      res.json({ message: 'Logged out successfully' });
+      console.log("you have logged out")  
+    }
+    else {
+      return res.status(400).json({ error: "No user" });
+    }
+  }
+  catch (error) {
+    res.status(500).json({ error: "Unable to get current user" });
+  }
+  
+});
+
 // LOGOUT ALL USER
 app.post('/logout', cors(corsOptions), (req, res) => {
   // Clear the session and associated user data
