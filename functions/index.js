@@ -185,7 +185,7 @@ app.post("/login", cors(corsOptions), async (req, res) => {
                 }
                 else {
                   var roleId;
-                  Organizer.where('user', '==', userRef).get()
+                  await Organizer.where('user', '==', userRef).get()
                     .then(async querySnapshot =>{
                       if (querySnapshot.empty){
                         res.status(400).json("empty")
