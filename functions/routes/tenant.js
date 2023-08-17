@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const {User, Tenant, Booths, Booth_Tenant, Organizer} = require("../config");
+const {User, Tenant, Booths, Booth_Tenant, Organizer, OrgNotif, TenantsNotif} = require("../config");
 const cors = require('cors');
 const admin = require('../index');
 // Define route handlers
@@ -110,55 +110,71 @@ router.post("/profile/create",  cors(corsOptions), async (req, res) => {
 
 // tenant daftar booth
 router.post('/mangkal', cors(corsOptions), async(req, res) =>{
-  const { boothId } = req.body;
+  const { boothId } = req.body; // boothId dan event ini nanti disimpan di variable di sap
   const userRef = User.doc(req.session.user.docId);
-
+  const tenantRef = Tenant.doc(req.session.user.roleId)
+  var namaTenant;
   try {
-    if(boothId && userRef){
-      var boothRef = Booths.doc(boothId);
-      var tenantRef;
-      // console.log(userRef)
-      // console.log(req.session.user.docId)
-
-      Tenant.where('user', '==', userRef).get()
-      .then(querySnapshot =>{
-        if (querySnapshot.empty){
-          res.status(400).json("empty")
-        } 
-        else{
-          querySnapshot.forEach(doc => {
-            tenantRef = Tenant.doc(doc.id)
-            // console.log(tenantRef)
-          })
-
-          Booth_Tenant.add({
-            booth: boothRef,
-            tenant: tenantRef,
-            paid: false,
-            accepted: false
-          })
-
-          res.status(200).json({message : "successfully enrolled"});
-        }
+    if(boothId && userRef && tenantRef){
+      tenantRef.get().then(doc => {
+        namaTenant = doc.data().nama
       })
-    
+      var boothRef = Booths.doc(boothId);
+      var eventRef;
+      var orgRef;
+      boothRef.get()
+          .then(doc => {
+            if (doc.exists) {
+              eventRef = doc.data().event;
+              if (eventRef) {
+                eventRef.get().then(async doc => {
+                orgRef = doc.data().organizer;
+                if (orgRef) {
+                  // add to booth-tenant
+                  await Booth_Tenant.add({
+                    booth: boothRef,
+                    tenant: tenantRef,
+                    paid: false, 
+                    accepted: false
+                  }).then(async (btRef) => {
+                    // Post to notif
+                    const currentDatetime = new Date();
+                    const notifData = {
+                      type: "mangkal",
+                      foro: orgRef ,
+                      fromt: tenantRef, 
+                      namaTenant: namaTenant, 
+                      boothTenantRef: btRef, 
+                      time:currentDatetime
+                    }
+                    await OrgNotif.add(notifData).then(() => {
+                      console.log("Notif has been added.");
+                      res.status(200).json( "Request has been successfully sent" ); 
+                    }).catch((e) => {
+                      res.status(400).json({ error: "Error while requesting booth" });
+                      console.log(e)
+                    })
+                    
+                  }).catch((e) => {
+                    res.status(400).json({ error: "There is an error adding when adding the booth" });
+                    console.log(e)
+                  })
+                }
+                else {
+                  res.status(400).json({ error: "No organizer can be found from event" });
+                }
+              })
+              }
+              else  {
+                res.status(400).json({ error: "No event can be found from booth" });
+              }
+              
+            } else {
+              console.log('Booth not found');
+            }})
       
-      // // get current data
-      // boothRef.get().then(docSnapshot =>{
-      //     if (docSnapshot.exists) {
-      //       // console.log(docSnapshot.data());
-      //       terdaftar = docSnapshot.data().terdaftar;
-      //       // console.log(terdaftarSaatIni);
-      //       terdaftar.push(userRef);
-      //       // console.log(terdaftarSaatIni);
-      //       // res.status(200).json(terdaftarSaatIni);
-      //     } else {
-      //       return res.status(401).json({ error: "No booth found with the specified id" });
-      //     }
-      // })
-
     } else {
-      res.status(401).send('Unauthorized');
+      res.status(500).send('Invalid input');
     }
 
   } catch (error) {

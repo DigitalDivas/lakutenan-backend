@@ -13,4 +13,6 @@ const Organizer = db.collection("Organizer");
 const Tenant = db.collection("Tenant");
 const Booths = db.collection("Booths");
 const Booth_Tenant = db.collection("Booth-Tenant");
-module.exports = {db, User, Events, Organizer, Tenant, Booths, Booth_Tenant};
+const TenantsNotif = db.collection("NotifnyaTenant");
+const OrgNotif = db.collection("NotifnyaOrg");
+module.exports = {db, User, Events, Organizer, Tenant, Booths, Booth_Tenant, OrgNotif, TenantsNotif};
