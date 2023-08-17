@@ -1,15 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { User, Events, Tenant } = require("../config");
-const cors = require('cors')
-
-// Define route handlers
-const corsOptions = {
-    origin: '*',
-    credentials: true,
-    optionSuccessStatus:200
-}
-router.use(cors(corsOptions));
+const { User, Events, Tenant } = require("../config.js");
 
 router.get('/event/:lokasi', async (req, res) => {
     const lokasi = req.params.lokasi;

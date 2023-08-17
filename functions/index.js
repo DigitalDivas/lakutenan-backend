@@ -10,7 +10,7 @@
 const {onRequest} = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 const bcrypt = require('bcrypt');
-const {User, Organizer, Tenant} = require('./config');
+const {User, Organizer, Tenant} = require('./config.js');
 const functions = require('firebase-functions')
 const express = require('express')
 const session = require('express-session');
@@ -19,7 +19,6 @@ const bodyParser = require('body-parser')
 const app = express()
 const PORT = 4000
 const admin = require("firebase-admin");
-const { query } = require("express");
 
 
 
@@ -177,7 +176,7 @@ app.post("/login", cors(corsOptions), async (req, res) => {
 
   } catch (error) {
     console.error("Authentication error:", error);
-    res.status(401).send("Authentication failed");
+    res.status(401).send({error: error.message});
   }
 });
 
@@ -199,7 +198,6 @@ app.post('/logout', cors(corsOptions), (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}.`);
 });
-module.exports = admin;
 
 
 const tenantRoute = require('./routes/tenant');
