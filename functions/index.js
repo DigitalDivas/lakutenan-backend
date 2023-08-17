@@ -148,63 +148,22 @@ app.post("/login", cors(corsOptions), async (req, res) => {
 
   try {
     User.where('userData.email', '==', email).get()
-    .then(async querySnapshot => {
+    .then(querySnapshot => {
       if (querySnapshot.empty) {
         return res.status(401).json({ error: "No user found with the specified email" });
       } 
       else {
-        var role;
         querySnapshot.forEach(doc => {
-          var userData = {...(doc.data().userData), "docId" : doc.id}; // Extract the entire user data
-          const userRef = User.doc(doc.id)
-          role = doc.data().userData.role;
+          const userData = {...(doc.data().userData), "docId" : doc.id}; // Extract the entire user data
           console.log('Document ID:', doc.id, ' => Document data:', userData);
           const hashPassword = userData.hashPassword;
-          bcrypt.compare(password, hashPassword, async (err, result) => {
+          bcrypt.compare(password, hashPassword, (err, result) => {
             if (err) {
               console.log(err)
               return res.status(401).json({ error: "An error occured" });
             } else if (result === true) {
-              if (role) {
-                if (role == 'tenant') {
-                  var roleId;
-                  await Tenant.where('user', '==', userRef).get()
-                    .then(async querySnapshot =>{
-                      if (querySnapshot.empty){
-                        res.status(400).json("empty")
-                      } 
-                      else{
-                        querySnapshot.forEach(doc => {
-                          roleId = doc.id;
-                          userData = {...userData, 'roleId' : roleId};
-                          req.session.user = userData;
-                          return res.json({ message: 'Login successful' });
-                        })
-                      }
-                    })
-                }
-                else {
-                  var roleId;
-                  await Organizer.where('user', '==', userRef).get()
-                    .then(async querySnapshot =>{
-                      if (querySnapshot.empty){
-                        res.status(400).json("empty")
-                      } 
-                      else{
-                        querySnapshot.forEach(doc => {
-                          roleId = doc.id;
-                          userData = {...userData, 'roleId' : roleId};
-                          req.session.user = userData;
-                          return res.json({ message: 'Login successful' });
-                        })
-                      }
-                    })
-                }
-              }
-              else  {
-                return res.status(500).json({ error: "No role" });
-              }
-              
+              req.session.user = userData;
+              res.json({ message: 'Login successful' });
             } else {
               return res.status(401).json({ error: "Incorrect email or password" });
             }
@@ -221,7 +180,6 @@ app.post("/login", cors(corsOptions), async (req, res) => {
     res.status(401).send("Authentication failed");
   }
 });
-
 
 // LOGOUT ALL USER
 app.post('/logout', cors(corsOptions), (req, res) => {

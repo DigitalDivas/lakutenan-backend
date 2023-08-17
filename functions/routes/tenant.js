@@ -112,66 +112,77 @@ router.post("/profile/create",  cors(corsOptions), async (req, res) => {
 router.post('/mangkal', cors(corsOptions), async(req, res) =>{
   const { boothId } = req.body; // boothId dan event ini nanti disimpan di variable di sap
   const userRef = User.doc(req.session.user.docId);
-  const tenantRef = Tenant.doc(req.session.user.roleId)
   var namaTenant;
+  var orgRef;
+  var eventRef;
   try {
-    if(boothId && userRef && tenantRef){
-      tenantRef.get().then(doc => {
-        namaTenant = doc.data().nama
+    if(boothId && userRef){
+      var tenantRef;
+      Tenant.where('user', '==', userRef).get()
+        .then(querySnapshot =>{
+          if (querySnapshot.empty){
+            return res.status(401).json("Unauthorized. You are not registered as tenant")
+          } 
+          else{
+            querySnapshot.forEach(async doc => {
+              namaTenant = doc.data().nama;
+              tenantRef = Tenant.doc(doc.id)
+              boothRef = Booths.doc(boothId)
+              await boothRef.get()
+                      .then(async (docSnapshot) => {
+                          if (docSnapshot.exists) {
+                              eventRef = docSnapshot.data().event;
+                              if (eventRef)  {
+                                eventRef.get().then(async doct => {
+                                      orgRef = doct.data().organizer;
+                                      if (orgRef) {
+                                        // add to booth-tenant
+                                        await Booth_Tenant.add({
+                                          booth: boothRef,
+                                          tenant: tenantRef,
+                                          paid: false, 
+                                          accepted: false
+                                        }).then(async (btRef) => {
+                                          // Post to notif
+                                          const currentDatetime = new Date();
+                                          const notifData = {
+                                            type: "mangkal",
+                                            foro: orgRef ,
+                                            fromt: tenantRef, 
+                                            namaTenant: namaTenant, 
+                                            boothTenantRef: btRef, 
+                                            time:currentDatetime
+                                          }
+                                          await OrgNotif.add(notifData).then(() => {
+                                            console.log("Notif has been added.");
+                                            return res.status(200).json( "Request has been successfully sent" ); 
+                                          }).catch((e) => {
+                                            res.status(400).json({ error: "Error while requesting booth" });
+                                            console.log(e)
+                                          })
+                                          
+                                        }).catch((e) => {
+                                          res.status(400).json({ error: "There is an error adding when adding the booth" });
+                                          console.log(e)
+                                        })
+                                      }
+                                      else {
+                                        res.status(400).json({ error: "No organizer can be found from event" });
+                                      }
+                                  })
+                              }
+                              else {
+                                return res.status(401).json({ error: "No tenant found with the specified booth" });
+                              }
+                          } else {
+                              return res.status(401).json({ error: "No booth found with the specified id" });
+                          }
+                      })
       })
-      var boothRef = Booths.doc(boothId);
-      var eventRef;
-      var orgRef;
-      boothRef.get()
-          .then(doc => {
-            if (doc.exists) {
-              eventRef = doc.data().event;
-              if (eventRef) {
-                eventRef.get().then(async doc => {
-                orgRef = doc.data().organizer;
-                if (orgRef) {
-                  // add to booth-tenant
-                  await Booth_Tenant.add({
-                    booth: boothRef,
-                    tenant: tenantRef,
-                    paid: false, 
-                    accepted: false
-                  }).then(async (btRef) => {
-                    // Post to notif
-                    const currentDatetime = new Date();
-                    const notifData = {
-                      type: "mangkal",
-                      foro: orgRef ,
-                      fromt: tenantRef, 
-                      namaTenant: namaTenant, 
-                      boothTenantRef: btRef, 
-                      time:currentDatetime
-                    }
-                    await OrgNotif.add(notifData).then(() => {
-                      console.log("Notif has been added.");
-                      res.status(200).json( "Request has been successfully sent" ); 
-                    }).catch((e) => {
-                      res.status(400).json({ error: "Error while requesting booth" });
-                      console.log(e)
-                    })
-                    
-                  }).catch((e) => {
-                    res.status(400).json({ error: "There is an error adding when adding the booth" });
-                    console.log(e)
-                  })
-                }
-                else {
-                  res.status(400).json({ error: "No organizer can be found from event" });
-                }
-              })
-              }
-              else  {
-                res.status(400).json({ error: "No event can be found from booth" });
-              }
-              
-            } else {
-              console.log('Booth not found');
-            }})
+        }
+
+      })
+      
       
     } else {
       res.status(500).send('Invalid input');
@@ -185,94 +196,114 @@ router.post('/mangkal', cors(corsOptions), async(req, res) =>{
 
 // api tenant follow organizer
 router.put('/follow/:organizerId', async (req, res) => {
-    const organizerId = req.params.organizerId;
-    console.log(organizerId);
-    const user = req.session.user;
+  const organizerId = req.params.organizerId;
+  console.log(organizerId);
+  const user = req.session.user;
 
 
-    if (user) {
-        if (user.role != 'tenant') {
-            return res.status(401).json({ error: "Only tenant can follow organizer" });
-        }
+  if (user) {
+      if (user.role != 'tenant') {
+          return res.status(401).json({ error: "Only tenant can follow organizer" });
+      }
 
-        const userRef = User.doc(req.session.user.docId);
-        console.log("org id: " + organizerId);
+      const userRef = User.doc(req.session.user.docId);
+      console.log("org id: " + organizerId);
 
-        // tenant
-        let tenantRef;
-        let tenantFollowings;
-        let tenantCountFollowings;
-        try {
-            const tenantQuerySnapshot = await Tenant.where('user', '==', userRef).get();
-        
-            if (tenantQuerySnapshot.empty) {
-                return res.status(401).json({ error: "Complete your tenant profile first" });
-            } else {
-                tenantQuerySnapshot.forEach(doc => {
-                    tenantRef = Tenant.doc(doc.id);
-                    tenantFollowings = doc.data().followings;
-                    tenantCountFollowings = doc.data().countFollowings;
-                });
-            }
-        } catch (error) {
-            console.error('Error getting documents:', error);
-            return res.status(500).json({ error: "An error occurred while retrieving tenant data" });
-        }
+      // tenant
+      let tenantRef;
+      let tenantFollowings;
+      let tenantCountFollowings;
+      let namaTenant;
+      let organizerRef;
+      try {
+          const tenantQuerySnapshot = await Tenant.where('user', '==', userRef).get();
+      
+          if (tenantQuerySnapshot.empty) {
+              return res.status(401).json({ error: "Complete your tenant profile first" });
+          } else {
+              tenantQuerySnapshot.forEach(doc => {
+                  tenantRef = Tenant.doc(doc.id);
+                  tenantFollowings = doc.data().followings;
+                  tenantCountFollowings = doc.data().countFollowings;
+                  namaTenant = doc.data().nama;
+              });
+          }
+      } catch (error) {
+          console.error('Error getting documents:', error);
+          return res.status(500).json({ error: "An error occurred while retrieving tenant data" });
+      }
 
-        // organizer
-        const organizerRef = Organizer.doc(organizerId);
-        const organizerSnapshot = await organizerRef.get();
-        if (!organizerSnapshot.exists) {
-            return res.status(404).json({ error: "No organizer found with the specified id" });
-        } 
+      // organizer
+      organizerRef = Organizer.doc(organizerId);
+      const organizerSnapshot = await organizerRef.get();
+      if (!organizerSnapshot.exists) {
+          return res.status(404).json({ error: "No organizer found with the specified id" });
+      } 
 
-        let organizerFollowers = organizerSnapshot.data().followers;
-        let organizerFollowersCount = organizerSnapshot.data().followerCount;
+      let organizerFollowers = organizerSnapshot.data().followers;
+      let organizerFollowersCount = organizerSnapshot.data().followerCount;
 
-        // cek udah follow belum
-        if (follower(tenantRef, organizerFollowers)) {
-            return res.status(500).json({ error: "You already followed this organizer" });
-        }
+      // cek udah follow belum
+      if (follower(tenantRef, organizerFollowers)) {
+          return res.status(500).json({ error: "You already followed this organizer" });
+      }
 
-        console.log("nyampe sini")
+      console.log("nyampe sini")
 
-        // add tenant to ogranizer's followers 
-        const addToFollowers = admin.firestore().runTransaction(async t => {
-            const doc = await t.get(organizerRef);
-            const organizerData = doc.data();
-            
-            // Append tenantRef to the existing followers array
-            const updatedFollowers = [...organizerData.followers, tenantRef];
-            
-            // Update the followers field with the updated array
-            t.update(organizerRef, { followers: updatedFollowers });
-        });
+      // add tenant to ogranizer's followers 
+      const addToFollowers = admin.firestore().runTransaction(async t => {
+          const doc = await t.get(organizerRef);
+          const organizerData = doc.data();
+          
+          // Append tenantRef to the existing followers array
+          const updatedFollowers = [...organizerData.followers, tenantRef];
+          
+          // Update the followers field with the updated array
+          t.update(organizerRef, { followers: updatedFollowers });
+      });
 
-        // add organizer to tenant's following
-        const addToFollowing = admin.firestore().runTransaction(async t => {
-            const doc = await t.get(tenantRef);
-            const tenantData = doc.data();
-            
-            // Append organizerRef to the existing followers array
-            const updatedFollowing = [...tenantData.followings, organizerRef];
+      // add organizer to tenant's following
+      const addToFollowing = admin.firestore().runTransaction(async t => {
+          const doc = await t.get(tenantRef);
+          const tenantData = doc.data();
+          
+          // Append organizerRef to the existing followers array
+          const updatedFollowing = [...tenantData.followings, organizerRef];
 
-            // Update the followings field with the updated array
-            t.update(tenantRef, { followings: updatedFollowing });
-        });
+          // Update the followings field with the updated array
+          t.update(tenantRef, { followings: updatedFollowing });
+      });
 
-        try {
-            await addToFollowers;
-            await addToFollowing;
-            await Tenant.doc(tenantRef.id).update({countFollowings: tenantCountFollowings + 1});
-            await Organizer.doc(organizerRef.id).update({followerCount: organizerFollowersCount + 1});
-            return res.status(200).json({ result: `Followed.` });
-        } catch (err) {
-            console.error(err);
-            return res.status(500).json({ result: `Error: ${err.message}` });
-        }
-    } else {
-        return res.status(401).json({ error: "Log In to follow organizer" });
-}});
+      // handle notification
+      const currentDatetime = new Date()
+      const notifData = {
+        type: "follow",
+        foro: organizerRef ,
+        fromt: tenantRef, 
+        namaTenant: namaTenant, 
+        time:currentDatetime
+      }
+      const pushNotif = OrgNotif.add(notifData).catch((e) => {
+        console.log(e);
+        return res.status(400).json({ error: "Error while following event" });
+      })
+
+      try {
+          await addToFollowers;
+          await addToFollowing;
+          await Tenant.doc(tenantRef.id).update({countFollowings: tenantCountFollowings + 1});
+          await Organizer.doc(organizerRef.id).update({followerCount: organizerFollowersCount + 1});
+          await pushNotif;
+          return res.status(200).json({ result: `Followed.`, message: `You are now following ${organizerId}`});
+      } catch (err) {
+          console.error(err);
+          return res.status(500).json({ result: `Error: ${err.message}` });
+      }
+  } 
+  else {
+      return res.status(401).json({ error: "Log In to follow organizer" });
+  }
+});
 
 // router.put('/follow/:organizerId', async (req, res) => {
 //     const organizerId = req.params.organizerId;
