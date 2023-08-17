@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const {User, Tenant, Booths, Booth_Tenant} = require("../config");
+const {User, Tenant, Booths, Booth_Tenant, Organizer} = require("../config");
 const cors = require('cors');
+const admin = require('../index');
 // Define route handlers
 const corsOptions = {
     origin: '*',
@@ -164,6 +165,168 @@ router.post('/mangkal', cors(corsOptions), async(req, res) =>{
     console.log(error)
   }
 })
+
+// api tenant follow organizer
+router.put('/follow/:organizerId', async (req, res) => {
+    const organizerId = req.params.organizerId;
+    console.log(organizerId);
+    const user = req.session.user;
+
+
+    if (user) {
+        if (user.role != 'tenant') {
+            return res.status(401).json({ error: "Only tenant can follow organizer" });
+        }
+
+        const userRef = User.doc(req.session.user.docId);
+        console.log("org id: " + organizerId);
+
+        // tenant
+        let tenantRef;
+        let tenantFollowings;
+        let tenantCountFollowings;
+        try {
+            const tenantQuerySnapshot = await Tenant.where('user', '==', userRef).get();
+        
+            if (tenantQuerySnapshot.empty) {
+                return res.status(401).json({ error: "Complete your tenant profile first" });
+            } else {
+                tenantQuerySnapshot.forEach(doc => {
+                    tenantRef = Tenant.doc(doc.id);
+                    tenantFollowings = doc.data().followings;
+                    tenantCountFollowings = doc.data().countFollowings;
+                });
+            }
+        } catch (error) {
+            console.error('Error getting documents:', error);
+            return res.status(500).json({ error: "An error occurred while retrieving tenant data" });
+        }
+
+        // organizer
+        const organizerRef = Organizer.doc(organizerId);
+        const organizerSnapshot = await organizerRef.get();
+        if (!organizerSnapshot.exists) {
+            return res.status(404).json({ error: "No organizer found with the specified id" });
+        } 
+
+        let organizerFollowers = organizerSnapshot.data().followers;
+        let organizerFollowersCount = organizerSnapshot.data().followerCount;
+
+        // cek udah follow belum
+        if (follower(tenantRef, organizerFollowers)) {
+            return res.status(500).json({ error: "You already followed this organizer" });
+        }
+
+        console.log("nyampe sini")
+
+        // add tenant to ogranizer's followers 
+        const addToFollowers = admin.firestore().runTransaction(async t => {
+            const doc = await t.get(organizerRef);
+            const organizerData = doc.data();
+            
+            // Append tenantRef to the existing followers array
+            const updatedFollowers = [...organizerData.followers, tenantRef];
+            
+            // Update the followers field with the updated array
+            t.update(organizerRef, { followers: updatedFollowers });
+        });
+
+        // add organizer to tenant's following
+        const addToFollowing = admin.firestore().runTransaction(async t => {
+            const doc = await t.get(tenantRef);
+            const tenantData = doc.data();
+            
+            // Append organizerRef to the existing followers array
+            const updatedFollowing = [...tenantData.followings, organizerRef];
+
+            // Update the followings field with the updated array
+            t.update(tenantRef, { followings: updatedFollowing });
+        });
+
+        try {
+            await addToFollowers;
+            await addToFollowing;
+            await Tenant.doc(tenantRef.id).update({countFollowings: tenantCountFollowings + 1});
+            await Organizer.doc(organizerRef.id).update({followerCount: organizerFollowersCount + 1});
+            return res.status(200).json({ result: `Followed.` });
+        } catch (err) {
+            console.error(err);
+            return res.status(500).json({ result: `Error: ${err.message}` });
+        }
+    } else {
+        return res.status(401).json({ error: "Log In to follow organizer" });
+}});
+
+// router.put('/follow/:organizerId', async (req, res) => {
+//     const organizerId = req.params.organizerId;
+//     const user = req.session.user;
+
+//     if (user) {
+//         if (user.role !== 'tenant') {
+//             return res.status(401).json({ error: "Only tenants can follow organizers" });
+//         }
+
+//         const userRef = User.doc(req.session.user.docId);
+//         const organizerRef = Organizer.doc(organizerId);
+
+//         try {
+//             const tenantQuerySnapshot = await Tenant.where('user', '==', userRef).get();
+
+//             if (tenantQuerySnapshot.empty) {
+//                 return res.status(401).json({ error: "Complete your tenant profile first" });
+//             }
+
+//             const tenantDoc = tenantQuerySnapshot.docs[0];
+//             const tenantRef = tenantDoc.ref;
+//             const tenantData = tenantDoc.data();
+
+//             if (follower(tenantRef, tenantData.followings)) {
+//                 return res.status(500).json({ error: "You already followed this organizer" });
+//             }
+
+//             // Run the transactions
+//             const addToFollowers = admin.firestore().runTransaction(async t => {
+//                 const organizerDoc = await t.get(organizerRef);
+//                 const organizerData = organizerDoc.data();
+//                 const updatedFollowers = [...organizerData.followers, tenantRef];
+//                 t.update(organizerRef, { followers: updatedFollowers });
+//             });
+
+//             const addToFollowing = admin.firestore().runTransaction(async t => {
+//                 const updatedFollowings = [...tenantData.followings, organizerRef];
+//                 t.update(tenantRef, { followings: updatedFollowings });
+//             });
+
+//             await Promise.all([addToFollowers, addToFollowing]);
+//             await tenantRef.update({ countFollowings: tenantData.countFollowings + 1 });
+//             await organizerRef.update({ followerCount: organizerData.followerCount + 1 });
+
+//             return res.status(200).json({ result: "Followed." });
+//         } catch (err) {
+//             console.error(err);
+//             return res.status(500).json({ result: `Error: ${err.message}` });
+//         }
+//     } else {
+//         return res.status(401).json({ error: "Log In to follow organizer" });
+//     }
+// });
+
+
+// function to check followers
+function follower(tenantRef, listFollowers) {
+    var i;
+    for (i = 0; i < listFollowers.length; i++) {
+        if (listFollowers[i].id === tenantRef.id) {
+            console.log("inside follower func");
+            console.log(listFollowers[i].id);
+            console.log(tenantRef.id);
+            return true;
+        }
+    }
+
+    return false;
+}
+
 
 // Export the router
 module.exports = router;
