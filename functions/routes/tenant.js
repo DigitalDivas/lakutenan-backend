@@ -110,8 +110,16 @@ router.post("/profile/create",  cors(corsOptions), async (req, res) => {
 
 // tenant daftar booth
 router.post('/mangkal', cors(corsOptions), async(req, res) =>{
+  const user = req.session.user;
+  if (!user)  {
+    return res.status(403).json({ error: "Unauthorized" });
+  }
+  else if (user.role != "tenant") {
+    return res.status(403).json({ error: "Unauthorized. For Tenants only" });
+  }
   const { boothId } = req.body; // boothId dan event ini nanti disimpan di variable di sap
   const userRef = User.doc(req.session.user.docId);
+  var recipientRef;
   var namaTenant;
   var orgRef;
   var eventRef;
@@ -135,6 +143,7 @@ router.post('/mangkal', cors(corsOptions), async(req, res) =>{
                               if (eventRef)  {
                                 eventRef.get().then(async doct => {
                                       orgRef = doct.data().organizer;
+                                      console.log(orgRef)
                                       if (orgRef) {
                                         // add to booth-tenant
                                         await Booth_Tenant.add({
@@ -144,23 +153,31 @@ router.post('/mangkal', cors(corsOptions), async(req, res) =>{
                                           paid: false, 
                                           accepted: false
                                         }).then(async (btRef) => {
+                                          orgRef.get().then(async (doco) => {
+                                            if (doco.exists) {
+                                                recipientRef = doco.data().user;
+                                                const currentDatetime = new Date();
+                                                const notifData = {
+                                                  type: "mangkal",
+                                                  foro: recipientRef ,
+                                                  fromt: userRef, 
+                                                  namaTenant: namaTenant, 
+                                                  boothTenantRef: btRef, 
+                                                  time:currentDatetime
+                                                }
+                                                await OrgNotif.add(notifData).then(() => {
+                                                  console.log("Notif has been added.");
+                                                  return res.status(200).json( "Request has been successfully sent" ); 
+                                                }).catch((e) => {
+                                                  res.status(400).json({ error: "Error while requesting booth" });
+                                                  console.log(e)
+                                                })
+                                            } else {
+                                                return res.status(401).json({ error: "No organizer found with the specified id" });
+                                            }
+                                        })
                                           // Post to notif
-                                          const currentDatetime = new Date();
-                                          const notifData = {
-                                            type: "mangkal",
-                                            foro: orgRef ,
-                                            fromt: tenantRef, 
-                                            namaTenant: namaTenant, 
-                                            boothTenantRef: btRef, 
-                                            time:currentDatetime
-                                          }
-                                          await OrgNotif.add(notifData).then(() => {
-                                            console.log("Notif has been added.");
-                                            return res.status(200).json( "Request has been successfully sent" ); 
-                                          }).catch((e) => {
-                                            res.status(400).json({ error: "Error while requesting booth" });
-                                            console.log(e)
-                                          })
+                                          
                                           
                                         }).catch((e) => {
                                           res.status(400).json({ error: "There is an error adding when adding the booth" });
@@ -216,6 +233,7 @@ router.put('/follow/:organizerId', async (req, res) => {
       let tenantCountFollowings;
       let namaTenant;
       let organizerRef;
+      let recipientRef;
       try {
           const tenantQuerySnapshot = await Tenant.where('user', '==', userRef).get();
       
@@ -240,6 +258,9 @@ router.put('/follow/:organizerId', async (req, res) => {
       if (!organizerSnapshot.exists) {
           return res.status(404).json({ error: "No organizer found with the specified id" });
       } 
+      else {
+        recipientRef = organizerSnapshot.data().user;
+      }
 
       let organizerFollowers = organizerSnapshot.data().followers;
       let organizerFollowersCount = organizerSnapshot.data().followerCount;
@@ -270,6 +291,7 @@ router.put('/follow/:organizerId', async (req, res) => {
           
           // Append organizerRef to the existing followers array
           const updatedFollowing = [...tenantData.followings, organizerRef];
+          
 
           // Update the followings field with the updated array
           t.update(tenantRef, { followings: updatedFollowing });
@@ -279,8 +301,8 @@ router.put('/follow/:organizerId', async (req, res) => {
       const currentDatetime = new Date()
       const notifData = {
         type: "follow",
-        foro: organizerRef ,
-        fromt: tenantRef, 
+        foro: recipientRef ,
+        fromt: userRef, 
         namaTenant: namaTenant, 
         time:currentDatetime
       }
@@ -361,66 +383,66 @@ router.put('/follow/:organizerId', async (req, res) => {
 // });
 
 // tenant bayar booth
-router.post('/bayar/:boothTenantId', cors(corsOptions), async(req, res) =>{
-  const boothTenantId  = req.params.boothTenantId; // boothId dan event ini nanti disimpan di variable di sap
-  const userRef = User.doc(req.session.user.docId);
-  try {
-    if(boothTenantId && userRef){
-      var orgRef;
-      var boothTenantRef;
-      var namaTenant;
-      const btRef = Booth_Tenant.doc(boothTenantId)
-      const currentDatetime = new Date()
-      var tenantRef;
-      Tenant.where('user', '==', userRef).get()
-        .then(querySnapshot =>{
-          if (querySnapshot.empty){
-            return res.status(401).json("Unauthorized. You are not registered as tenant")
-          } 
-          else{
-            querySnapshot.forEach(async doc => {
-              namaTenant = doc.data().nama;
-              tenantRef = Tenant.doc(doc.id);
-              boothTenantRef = Booth_Tenant.doc(boothTenantId);
-              boothTenantRef.get()
-              .then(async (docSnapshot) => {
-                if (docSnapshot.empty){
-                  return res.status(400).json("Booth cannot be found")
-                } 
-                else  {
-                orgRef = docSnapshot.data().organizer;
-                const notifData = {
-                  type: "pay",
-                  foro: orgRef ,
-                  fromt: tenantRef, 
-                  namaTenant: namaTenant, 
-                  boothTenantRef: btRef, 
-                  time:currentDatetime
-                }
-                await OrgNotif.add(notifData).then(() => {
-                  console.log("Notif has been added.");
-                  return res.status(200).json( "Request has been successfully sent" ); 
-                }).catch((e) => {
-                  res.status(400).json({ error: "Error payment" });
-                  console.log(e)
-                })
-                }
-              }).catch((e) =>{
-                return res.status(400).json("Problem fetching booth")
-              })
-      })
-        }
+// router.post('/bayar/:boothTenantId', cors(corsOptions), async(req, res) =>{
+//   const boothTenantId  = req.params.boothTenantId; // boothId dan event ini nanti disimpan di variable di sap
+//   const userRef = User.doc(req.session.user.docId);
+//   try {
+//     if(boothTenantId && userRef){
+//       var orgRef;
+//       var boothTenantRef;
+//       var namaTenant;
+//       const btRef = Booth_Tenant.doc(boothTenantId)
+//       const currentDatetime = new Date()
+//       var tenantRef;
+//       Tenant.where('user', '==', userRef).get()
+//         .then(querySnapshot =>{
+//           if (querySnapshot.empty){
+//             return res.status(401).json("Unauthorized. You are not registered as tenant")
+//           } 
+//           else{
+//             querySnapshot.forEach(async doc => {
+//               namaTenant = doc.data().nama;
+//               tenantRef = Tenant.doc(doc.id);
+//               boothTenantRef = Booth_Tenant.doc(boothTenantId);
+//               boothTenantRef.get()
+//               .then(async (docSnapshot) => {
+//                 if (docSnapshot.empty){
+//                   return res.status(400).json("Booth cannot be found")
+//                 } 
+//                 else  {
+//                 orgRef = docSnapshot.data().organizer;
+//                 const notifData = {
+//                   type: "pay",
+//                   foro: orgRef ,
+//                   fromt: tenantRef, 
+//                   namaTenant: namaTenant, 
+//                   boothTenantRef: btRef, 
+//                   time:currentDatetime
+//                 }
+//                 await OrgNotif.add(notifData).then(() => {
+//                   console.log("Notif has been added.");
+//                   return res.status(200).json( "Request has been successfully sent" ); 
+//                 }).catch((e) => {
+//                   res.status(400).json({ error: "Error payment" });
+//                   console.log(e)
+//                 })
+//                 }
+//               }).catch((e) =>{
+//                 return res.status(400).json("Problem fetching booth")
+//               })
+//       })
+//         }
 
-      })
-    } else {
-      res.status(500).send('Invalid input');
-    }
+//       })
+//     } else {
+//       res.status(500).send('Invalid input');
+//     }
 
-  } catch (error) {
-    res.status(500).json({ error: `${error}` });
-    console.log(error)
-  }
-})
+//   } catch (error) {
+//     res.status(500).json({ error: `${error}` });
+//     console.log(error)
+//   }
+// })
 
 // function to check followers
 function follower(tenantRef, listFollowers) {

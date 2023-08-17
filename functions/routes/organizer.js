@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 // Define the Events collection reference
-const {User, Events, Organizer, Booths, OrgNotif, TenantsNotif} = require('../config');
+const {User, Events, Organizer, Booths, OrgNotif, TenantsNotif, Booth_Tenant} = require('../config');
 const cors = require('cors')
 const multer = require('multer');
 const storage = multer.memoryStorage();
@@ -225,8 +225,9 @@ router.post('/post', cors(corsOptions), async(req, res) =>{
                             return res.status(403).json("Not registered as Organizer")
                             } 
                             else{
-                            querySnapshot.forEach(doc => {
+                            querySnapshot.forEach( doc => {
                                 const orgRef = Organizer.doc(doc.id);
+                                const followers = doc.data().followers
                                 if (orgRef) {
                                     const eventData = {
                                         datetime: datetime,
@@ -238,8 +239,29 @@ router.post('/post', cors(corsOptions), async(req, res) =>{
                                         organizer: orgRef,
                                         panduan: panduan
                                     }
-                                    Events.add({eventData})
-                                    res.status(200).json({ message : "Event created successfully"})
+                                     Events.add({eventData}).then((eventRef) => {
+                                        // const notifData = {
+                                        //     type: "invite",
+                                        //     fromo: userRef, 
+                                        //     eventRef: eventRef, 
+                                        //     time:datetime
+                                        // }
+                                        followers.forEach((follower) => {
+                                            const notifData = {
+                                                type: "invite",
+                                                fort: follower,
+                                                fromo: userRef, 
+                                                eventRef: eventRef, 
+                                                time:datetime
+                                            }
+                                            console.log(follower)
+                                            TenantsNotif.add(notifData);
+                                        })
+
+                                    }).then(() => {
+                                       res.status(200).json({ message : "Event has been broadcasted successfully"}) 
+                                    })
+                                    
                                 }
                                 else{
                                     return res.status(400).json("organizer not found")  
@@ -320,4 +342,111 @@ router.get('/get-booth/:eventId', cors(corsOptions), async(req, res) =>{
         res.status(500).json({ error: `${error}` }); 
     }
 })
+
+
+// organizer acc mou tenant 
+router.post('/acc/:boothTenantId', cors(corsOptions), async(req, res) =>{
+    const user = req.session.user;
+    if (!user)  {
+        return res.status(403).json({ error: "Unauthorized" });
+    }
+    else if (user.role != "organizer") {
+        return res.status(403).json({ error: "Unauthorized. For Organizer only" });
+    }
+    const boothTenantId   =  req.params.boothTenantId;; // boothId dan event ini nanti disimpan di variable di sap
+    const userRef = User.doc(req.session.user.docId);
+    try {
+      if(boothTenantId && userRef){
+        var orgRef;
+        var boothTenantRef;
+        var boothRef;
+        var tenantRef;
+        var eventRef;
+        const btRef = Booth_Tenant.doc(boothTenantId)
+        const currentDatetime = new Date()
+        var tenantRef;
+        var terdaftar;
+        var recipientRef;
+        Organizer.where('user', '==', userRef).get()
+          .then(querySnapshot =>{
+            if (querySnapshot.empty){
+              return res.status(401).json("Unauthorized. You are not registered as organizer")
+            } 
+            else{
+              querySnapshot.forEach(async doc => {
+                namaTenant = doc.data().nama;
+                boothTenantRef = Booth_Tenant.doc(boothTenantId);
+                boothTenantRef.update({accepted: true}).then(() => {
+                    boothTenantRef.get()
+                .then(async (docSnapshot) => {
+                  if (docSnapshot.empty){
+                    return res.status(400).json("Booth cannot be found")
+                  } 
+                  else  {
+                    tenantRef = docSnapshot.data().tenant;
+                    orgRef = docSnapshot.data().organizer;
+                    boothRef = docSnapshot.data().booth;
+                    tenantRef.get().then((doct) => {
+                        if (doct.exists) {
+                            recipientRef = doct.data().user;
+                            boothRef.get().then(async (docb) => {
+                        if (docb.exists) {
+                            eventRef = docb.data().event;
+                            terdaftar = docb.data().terdaftar;
+                            if (terdaftar.includes(tenantRef))  {
+                                return res.status(400).json("Tenant has been accepted")
+                            }
+                            terdaftar.push(tenantRef)
+                            boothRef.update({terdaftar: terdaftar}).then(async () => {
+                                const notifData = {
+                                type: "accept",
+                                fort: recipientRef ,
+                                fromo: userRef, 
+                                eventRef: eventRef, 
+                                boothTenantRef: btRef, 
+                                time:currentDatetime
+                            }
+                            await TenantsNotif.add(notifData).then(() => {
+                                console.log("Notif has been added.");
+                                return res.status(200).json( "Request has been successfully sent" ); 
+                            }).catch((e) => {
+                                res.status(400).json({ error: "Error accepting" });
+                                console.log(e)
+                            })
+                            })
+                            
+                        } else {
+                            return res.status(400).json({ error: "No booth found with the specified id" });
+                        }
+                    })
+
+                        } else {
+                            return res.status(401).json({ error: "No tenant found with the specified id" });
+                        }
+                    })
+                    
+                    
+                  }
+                }).catch((e) =>{
+                  return res.status(400).json("Problem fetching booth")
+                })
+                })
+                
+        })
+          }
+        })
+      } else {
+        res.status(500).send('Invalid input');
+      }
+  
+    } catch (error) {
+      res.status(500).json({ error: `${error}` });
+      console.log(error)
+    }
+  })
+
+
+  // organizer acc mou tenant 
+
+
 module.exports = router;
