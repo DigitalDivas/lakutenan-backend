@@ -127,7 +127,7 @@ router.post('/mangkal', cors(corsOptions), async(req, res) =>{
       var tenantRef;
       // console.log(userRef)
       // console.log(req.session.user.docId)
-      
+
       Tenant.where('user', '==', userRef).get()
       .then(querySnapshot =>{
         if (querySnapshot.empty){
@@ -142,7 +142,8 @@ router.post('/mangkal', cors(corsOptions), async(req, res) =>{
           Booth_Tenant.add({
             booth: boothRef,
             tenant: tenantRef,
-            paid: false
+            paid: false,
+            accepted: false
           })
 
           res.status(200).json({message : "successfully enrolled"});

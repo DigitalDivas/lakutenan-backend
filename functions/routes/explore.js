@@ -11,11 +11,11 @@ const corsOptions = {
 }
 router.use(cors(corsOptions));
 
-router.get('/event/:category', async (req, res) => {
-    const category = req.params.category;
+router.get('/event/:lokasi', async (req, res) => {
+    const lokasi = req.params.lokasi;
 
     try {
-        Events.where('kategori', '==', category).get()
+        Events.where('lokasi', '==', lokasi).get()
         .then(querySnapshot => {
             console.log(querySnapshot);
             if (querySnapshot.empty) {
@@ -25,7 +25,7 @@ router.get('/event/:category', async (req, res) => {
                 const array = [];
                 querySnapshot.forEach(doc => {
                     // console.log(doc.data());
-                    array.push(doc.data())
+                    array.push({...(doc.data()), "docId" : doc.id})
                 })
                 return res.status(200).json(array)
             }
@@ -55,7 +55,7 @@ router.get('/tenant/:category', async (req, res) => {
                     // console.log(doc.data());
                     // console.log(doc.data());
                     // console.log(doc.data().userID);
-                    array.push(doc.data());
+                    array.push({...(doc.data()), "docId" : doc.id});
                 })
                 return res.status(200).json(array);
             }
