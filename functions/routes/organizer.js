@@ -26,7 +26,7 @@ router.get('/event/:eventId', async (req, res) => {
         .then((docSnapshot) => {
             if (docSnapshot.exists) {
                 console.log(docSnapshot.data());
-                return res.status(200).json(docSnapshot.data());
+                return res.status(200).json({...(docSnapshot.data()), "docId" : docSnapshot.id});
             } else {
                 return res.status(401).json({ error: "No event found with the specified id" });
             }
@@ -272,7 +272,7 @@ router.get('/get-booth/:eventId', cors(corsOptions), async(req, res) =>{
                 else {
                     const array = [];
                     querySnapshot.forEach(doc => {
-                        array.push(doc.data());
+                        array.push({...(doc.data()), "docId" : doc.id});
                     })
                     return res.status(200).json(array);
                 }
